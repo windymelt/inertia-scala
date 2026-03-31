@@ -9,7 +9,7 @@ ThisBuild / version      := "0.1.0-SNAPSHOT"
 
 lazy val root = project
   .in(file("."))
-  .aggregate(core.jvm, core.js, `inertia-cask`, `inertia-tapir`, example, `example-tapir`)
+  .aggregate(core.jvm, core.js, `inertia-cask`, `inertia-tapir`.jvm, `inertia-tapir`.js, example, `example-tapir`)
   .settings(
     name := "inertia-scala",
     publish / skip := true
@@ -33,13 +33,14 @@ lazy val `inertia-cask` = project
     libraryDependencies += "org.scalameta" %% "munit" % "1.2.4" % Test
   )
 
-lazy val `inertia-tapir` = project
+lazy val `inertia-tapir` = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Pure)
   .in(file("tapir"))
-  .dependsOn(core.jvm)
+  .dependsOn(core)
   .settings(
     name := "inertia-tapir",
-    libraryDependencies += "com.softwaremill.sttp.tapir" %% "tapir-core" % tapirVersion % Provided,
-    libraryDependencies += "org.scalameta" %% "munit" % "1.2.4" % Test
+    libraryDependencies += "com.softwaremill.sttp.tapir" %%% "tapir-core" % tapirVersion % Provided,
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.2.4" % Test
   )
 
 lazy val example = project
@@ -55,7 +56,7 @@ lazy val example = project
 
 lazy val `example-tapir` = project
   .in(file("example-tapir"))
-  .dependsOn(`inertia-tapir`)
+  .dependsOn(`inertia-tapir`.jvm)
   .settings(
     name := "inertia-example-tapir",
     publish / skip := true,
