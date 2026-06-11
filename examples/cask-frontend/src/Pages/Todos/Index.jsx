@@ -43,7 +43,7 @@ export default function TodosIndex({ todos }) {
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {todos.map(todo => (
-          <li key={todo.id} id={`todo-${todo.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0' }}>
+          <li key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0' }}>
             <input
               type="checkbox"
               checked={todo.done}

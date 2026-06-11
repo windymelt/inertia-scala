@@ -219,9 +219,11 @@ object ExampleServer extends cask.MainRoutes:
       val todo = Todo(todoNextId, title.trim, done = false)
       todoNextId += 1
       todos = todos :+ todo
-      // 追加した todo の位置へフラグメント付きでリダイレクトする。
-      // Inertia リクエストかつ遷移先に # を含むため 409 + X-Inertia-Redirect になる。
-      InertiaCask.redirect(req, s"/todos#todo-${todo.id}", 303)
+      // 通常の 303 リダイレクト。
+      // 注: フラグメント付きリダイレクト（409 + X-Inertia-Redirect）はサーバー側で
+      //     対応済みだが、現行クライアント @inertiajs/core 2.3.18 が x-inertia-redirect を
+      //     処理しないため、サンプルでは通常リダイレクトを使う。
+      InertiaCask.redirect(req, "/todos", 303)
 
   @cask.postJson("/todos/:id/toggle")
   def todoToggle(req: cask.Request, id: Int) =
