@@ -21,6 +21,14 @@ object BorerProps:
       val afterOnly = if only.nonEmpty then p.filter((k, _) => only.contains(k)) else p
       afterOnly.filterNot((k, _) => except.contains(k))
 
+    def errors(messages: Map[String, String], errorBag: Option[String]): Props =
+      val value: Element =
+        if messages.isEmpty then prop(Map.empty[String, String])
+        else errorBag match
+          case Some(bag) => prop(Map(bag -> messages))
+          case None      => prop(messages)
+      Map("errors" -> value)
+
     def toJsonObjectString(p: Props): String =
       if p.isEmpty then "{}"
       else

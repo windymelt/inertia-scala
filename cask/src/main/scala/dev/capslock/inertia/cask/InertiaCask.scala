@@ -17,6 +17,7 @@ class CaskInertiaRequest(req: cask.Request) extends InertiaRequest:
   val partialComponent: Option[String] = header(InertiaCore.HdrPartialCmp)
   val partialOnly: Set[String]        = headerList(InertiaCore.HdrPartialOnly)
   val partialExcept: Set[String]      = headerList(InertiaCore.HdrPartialExcept)
+  val errorBag: Option[String]        = header(InertiaCore.HdrErrorBag)
   val method: String                  = req.exchange.getRequestMethod.toString.toUpperCase
   val url: String =
     val path = req.exchange.getRequestPath
@@ -36,10 +37,12 @@ object InertiaCask:
     props: P,
     sharedProps: Option[P]     = None,
     version: String            = "",
+    errors: Map[String, String] = Map.empty,
     layoutFn: String => String = InertiaCore.defaultLayout
   )(using J: JsonObject[P]): cask.Response[String] =
     val ireq = CaskInertiaRequest(req)
-    val result: InertiaResult[P] = InertiaCore.render(ireq, component, props, sharedProps, version)
+    val result: InertiaResult[P] =
+      InertiaCore.render(ireq, component, props, sharedProps, version, errors)
     resultToResponse(result, layoutFn)
 
   private def resultToResponse[P: JsonObject](
@@ -83,7 +86,9 @@ object InertiaCask:
     location: String,
     status: Int = 302
   ): cask.Response[String] =
-    val normalized = InertiaCore.normalizeRedirectStatus(
-      req.exchange.getRequestMethod.toString, status
-    )
-    cask.Response("", statusCode = normalized, headers = Seq("Location" -> location))
+    val ireq = CaskInertiaRequest(req)
+    InertiaCore.planRedirect(ireq.method, location, status, ireq.isInertia) match
+      case RedirectPlan.Fragment(loc) =>
+        cask.Response("", statusCode = 409, headers = Seq(InertiaCore.HdrRedirect -> loc))
+      case RedirectPlan.Location(loc, st) =>
+        cask.Response("", statusCode = st, headers = Seq("Location" -> loc))
