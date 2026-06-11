@@ -51,8 +51,7 @@ object ExampleTapirServer:
           Props.of(
             "input"      -> str("""{"hello": "world", "number": 42, "nested": {"key": true}}"""),
             "cborHex"    -> nil,
-            "cborBase64" -> nil,
-            "error"      -> nil
+            "cborBase64" -> nil
           ),
           layoutFn = layout
         )
@@ -105,14 +104,16 @@ object ExampleTapirServer:
       cborBase64: Option[String] = None,
       error: Option[String] = None
   ): InertiaResponse =
+    // エラーは Inertia 標準の errors メカニズムで返す。クライアントの useForm が
+    // errors.jsonInput として拾う。空メッセージの場合は errors: {} になる。
     InertiaTapir.render(
       headers, "/convert", "POST", "Converter",
       Props.of(
         "input"      -> str(input),
         "cborHex"    -> cborHex.map(str).getOrElse(nil),
-        "cborBase64" -> cborBase64.map(str).getOrElse(nil),
-        "error"      -> error.map(str).getOrElse(nil)
+        "cborBase64" -> cborBase64.map(str).getOrElse(nil)
       ),
+      errors = error.map(msg => Map("jsonInput" -> msg)).getOrElse(Map.empty),
       layoutFn = layout
     )
 

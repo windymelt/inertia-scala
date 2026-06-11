@@ -1,7 +1,7 @@
 import { useForm } from '@inertiajs/react'
 
-export default function Converter({ input, cborHex, cborBase64, error }) {
-  const { data, setData, post, processing } = useForm({ jsonInput: input || '' })
+export default function Converter({ input, cborHex, cborBase64 }) {
+  const { data, setData, post, processing, errors } = useForm({ jsonInput: input || '' })
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -49,7 +49,7 @@ export default function Converter({ input, cborHex, cborBase64, error }) {
         </button>
       </form>
 
-      {error && (
+      {errors.jsonInput && (
         <div style={{
           marginTop: '1rem',
           padding: '0.75rem',
@@ -58,7 +58,7 @@ export default function Converter({ input, cborHex, cborBase64, error }) {
           borderRadius: 4,
           color: '#900',
         }}>
-          {error}
+          {errors.jsonInput}
         </div>
       )}
 

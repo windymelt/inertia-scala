@@ -141,12 +141,31 @@ object ExampleServer extends cask.MainRoutes:
       layoutFn = layout
     )
 
-  @cask.postJson("/todos")
-  def todoCreate(req: cask.Request, title: String) =
-    val todo = Todo(todoNextId, title, done = false)
-    todoNextId += 1
-    todos = todos :+ todo
-    InertiaCask.redirect(req, "/todos", 303)
+  // @cask.postJson は戻り値の本文を再度 JSON 文字列化してしまうため、
+  // JSON 本文を持つ Inertia レスポンスを返すここでは @cask.post を使い、
+  // リクエスト本文を手動でパースする。
+  @cask.post("/todos")
+  def todoCreate(req: cask.Request) =
+    val title = readFromString[CreateTodoRequest](req.text()).title
+    if title.trim.isEmpty then
+      // サーバーサイドバリデーション。errors を付けて同じコンポーネントを返すと、
+      // クライアントの useForm が form.errors として拾う。
+      // （本ライブラリはセッション機構を持たないため、303 リダイレクト + フラッシュ
+      //   ではなく、その場で errors 付きのページを返す方式を採る。）
+      InertiaCask.render(
+        req,
+        component = "Todos/Index",
+        props = Props.of("todos" -> prop(todos)),
+        errors = Map("title" -> "タイトルを入力してください"),
+        layoutFn = layout
+      )
+    else
+      val todo = Todo(todoNextId, title.trim, done = false)
+      todoNextId += 1
+      todos = todos :+ todo
+      // 追加した todo の位置へフラグメント付きでリダイレクトする。
+      // Inertia リクエストかつ遷移先に # を含むため 409 + X-Inertia-Redirect になる。
+      InertiaCask.redirect(req, s"/todos#todo-${todo.id}", 303)
 
   @cask.postJson("/todos/:id/toggle")
   def todoToggle(req: cask.Request, id: Int) =

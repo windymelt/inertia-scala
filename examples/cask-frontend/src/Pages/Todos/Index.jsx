@@ -1,7 +1,7 @@
 import { Link, useForm, router } from '@inertiajs/react'
 
 export default function TodosIndex({ todos }) {
-  const { data, setData, post, processing } = useForm({ title: '' })
+  const { data, setData, post, processing, errors } = useForm({ title: '' })
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -20,22 +20,30 @@ export default function TodosIndex({ todos }) {
     <div style={{ maxWidth: 600, margin: '2rem auto', fontFamily: 'system-ui' }}>
       <h1>Todos</h1>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <input
-          type="text"
-          value={data.title}
-          onChange={e => setData('title', e.target.value)}
-          placeholder="New todo..."
-          style={{ flex: 1, padding: '0.4rem' }}
-        />
-        <button type="submit" disabled={processing || !data.title.trim()}>
-          Add
-        </button>
+      <form onSubmit={handleSubmit} style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <input
+            type="text"
+            value={data.title}
+            onChange={e => setData('title', e.target.value)}
+            placeholder="New todo..."
+            style={{ flex: 1, padding: '0.4rem', borderColor: errors.title ? '#c66' : undefined }}
+          />
+          {/* サーバー側バリデーションを実演するため、空でもボタンは押せるようにしている */}
+          <button type="submit" disabled={processing}>
+            Add
+          </button>
+        </div>
+        {errors.title && (
+          <p style={{ color: '#c00', fontSize: '0.85rem', margin: '0.3rem 0 0' }}>
+            {errors.title}
+          </p>
+        )}
       </form>
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {todos.map(todo => (
-          <li key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0' }}>
+          <li key={todo.id} id={`todo-${todo.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0' }}>
             <input
               type="checkbox"
               checked={todo.done}
