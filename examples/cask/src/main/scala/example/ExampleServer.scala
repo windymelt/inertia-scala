@@ -27,6 +27,14 @@ case class CreateTodoRequest(title: String)
 object CreateTodoRequest:
   given JsonValueCodec[CreateTodoRequest] = JsonCodecMaker.make
 
+case class UpdateProfileRequest(name: String, email: String)
+object UpdateProfileRequest:
+  given JsonValueCodec[UpdateProfileRequest] = JsonCodecMaker.make
+
+case class UpdatePasswordRequest(password: String, passwordConfirmation: String)
+object UpdatePasswordRequest:
+  given JsonValueCodec[UpdatePasswordRequest] = JsonCodecMaker.make
+
 // ── Server ───────────────────────────────────────────────────────────────────
 
 object ExampleServer extends cask.MainRoutes:
@@ -34,7 +42,7 @@ object ExampleServer extends cask.MainRoutes:
   override def port: Int = 9000
 
   // Sample data
-  private val users = List(
+  private var users = List(
     User(1, "Alice", "alice@example.com"),
     User(2, "Bob", "bob@example.com"),
     User(3, "Charlie", "charlie@example.com")
@@ -103,19 +111,67 @@ object ExampleServer extends cask.MainRoutes:
   @cask.get("/users/:id")
   def userShow(req: cask.Request, id: Int) =
     users.find(_.id == id) match
+      case Some(user) => renderUserShow(req, user)
+      case None       => cask.Response("Not Found", statusCode = 404)
+
+  // Users/Show をレンダリングする共通ヘルパー。
+  // errors は呼び出し側が渡すだけでよく、どの error bag に入れるかは
+  // クライアントが送る X-Inertia-Error-Bag を見て core が自動でネストする。
+  private def renderUserShow(
+    req: cask.Request,
+    user: User,
+    errors: Map[String, String] = Map.empty
+  ): cask.Response[String] =
+    InertiaCask.render(
+      req,
+      component = "Users/Show",
+      props = Props.of(
+        "user"  -> prop(user),
+        "posts" -> prop(posts.filter(_.authorId == user.id))
+      ),
+      errors = errors,
+      layoutFn = layout
+    )
+
+  // プロフィール更新フォーム。クライアントは errorBag "updateProfile" で送る。
+  @cask.post("/users/:id/profile")
+  def updateProfile(req: cask.Request, id: Int) =
+    users.find(_.id == id) match
+      case None => cask.Response("Not Found", statusCode = 404)
       case Some(user) =>
-        val userPosts = posts.filter(_.authorId == id)
-        InertiaCask.render(
-          req,
-          component = "Users/Show",
-          props = Props.of(
-            "user"  -> prop(user),
-            "posts" -> prop(userPosts)
-          ),
-          layoutFn = layout
-        )
-      case None =>
-        cask.Response("Not Found", statusCode = 404)
+        val body = readFromString[UpdateProfileRequest](req.text())
+        val errors = Map.newBuilder[String, String]
+        if body.name.trim.isEmpty then
+          errors += "name" -> "名前を入力してください"
+        if !body.email.contains("@") then
+          errors += "email" -> "メールアドレスの形式が正しくありません"
+        val errs = errors.result()
+        if errs.nonEmpty then
+          renderUserShow(req, user, errs)
+        else
+          users = users.map(u =>
+            if u.id == id then u.copy(name = body.name.trim, email = body.email) else u
+          )
+          InertiaCask.redirect(req, s"/users/$id", 303)
+
+  // パスワード変更フォーム。クライアントは errorBag "updatePassword" で送る。
+  // （デモのためパスワードは保存しない。）
+  @cask.post("/users/:id/password")
+  def updatePassword(req: cask.Request, id: Int) =
+    users.find(_.id == id) match
+      case None => cask.Response("Not Found", statusCode = 404)
+      case Some(user) =>
+        val body = readFromString[UpdatePasswordRequest](req.text())
+        val errors = Map.newBuilder[String, String]
+        if body.password.length < 8 then
+          errors += "password" -> "パスワードは8文字以上にしてください"
+        else if body.password != body.passwordConfirmation then
+          errors += "passwordConfirmation" -> "パスワードが一致しません"
+        val errs = errors.result()
+        if errs.nonEmpty then
+          renderUserShow(req, user, errs)
+        else
+          InertiaCask.redirect(req, s"/users/$id", 303)
 
   @cask.get("/about")
   def about(req: cask.Request) =
