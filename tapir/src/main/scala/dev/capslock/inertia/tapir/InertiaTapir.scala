@@ -11,7 +11,8 @@ case class InertiaHeaders(
     clientVersion: Option[String],
     partialComponent: Option[String],
     partialOnly: Set[String],
-    partialExcept: Set[String]
+    partialExcept: Set[String],
+    errorBag: Option[String] = None
 )
 
 // ── InertiaRequest implementation backed by extracted headers ────────────────
@@ -26,6 +27,7 @@ class TapirInertiaRequest(
   val partialComponent: Option[String] = headers.partialComponent
   val partialOnly: Set[String]        = headers.partialOnly
   val partialExcept: Set[String]      = headers.partialExcept
+  val errorBag: Option[String]        = headers.errorBag
 
 // ── Tapir-friendly response ─────────────────────────────────────────────────
 
@@ -49,31 +51,33 @@ object InertiaTapir:
       .and(header[Option[String]](InertiaCore.HdrPartialCmp))
       .and(header[Option[String]](InertiaCore.HdrPartialOnly))
       .and(header[Option[String]](InertiaCore.HdrPartialExcept))
+      .and(header[Option[String]](InertiaCore.HdrErrorBag))
       .map(tupleToHeaders)(headersToTuple)
 
   private def parseCommaSeparated(s: Option[String]): Set[String] =
     s.map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
 
-  private def tupleToHeaders(
-      t: (Option[String], Option[String], Option[String], Option[String], Option[String])
-  ): InertiaHeaders =
+  private type HeaderTuple =
+    (Option[String], Option[String], Option[String], Option[String], Option[String], Option[String])
+
+  private def tupleToHeaders(t: HeaderTuple): InertiaHeaders =
     InertiaHeaders(
       isInertia = t._1.isDefined,
       clientVersion = t._2,
       partialComponent = t._3,
       partialOnly = parseCommaSeparated(t._4),
-      partialExcept = parseCommaSeparated(t._5)
+      partialExcept = parseCommaSeparated(t._5),
+      errorBag = t._6
     )
 
-  private def headersToTuple(
-      h: InertiaHeaders
-  ): (Option[String], Option[String], Option[String], Option[String], Option[String]) =
+  private def headersToTuple(h: InertiaHeaders): HeaderTuple =
     (
       if h.isInertia then Some("true") else None,
       h.clientVersion,
       h.partialComponent,
       if h.partialOnly.nonEmpty then Some(h.partialOnly.mkString(", ")) else None,
-      if h.partialExcept.nonEmpty then Some(h.partialExcept.mkString(", ")) else None
+      if h.partialExcept.nonEmpty then Some(h.partialExcept.mkString(", ")) else None,
+      h.errorBag
     )
 
   // ── Output definition ───────────────────────────────────────────────────
@@ -106,10 +110,11 @@ object InertiaTapir:
       props: P,
       sharedProps: Option[P] = None,
       version: String = "",
+      errors: Map[String, String] = Map.empty,
       layoutFn: String => String = InertiaCore.defaultLayout
   )(using J: JsonObject[P]): InertiaResponse =
     val req    = TapirInertiaRequest(headers, url, method)
-    val result = InertiaCore.render(req, component, props, sharedProps, version)
+    val result = InertiaCore.render(req, component, props, sharedProps, version, errors)
     resultToResponse(result, layoutFn)
 
   private def resultToResponse[P: JsonObject](
@@ -149,10 +154,27 @@ object InertiaTapir:
 
   // ── Redirect helper ─────────────────────────────────────────────────────
 
-  def redirect(method: String, location: String, status: Int = 302): InertiaResponse =
-    val normalized = InertiaCore.normalizeRedirectStatus(method, status)
-    InertiaResponse(
-      statusCode = StatusCode(normalized),
-      body = "",
-      headers = List(Header("Location", location))
-    )
+  /** リダイレクトレスポンスを生成する。
+    *
+    * `isInertia` が true かつ遷移先にフラグメント(#)が含まれる場合は
+    * 409 + X-Inertia-Redirect を、それ以外は Location リダイレクト（302/303）を返す。
+    */
+  def redirect(
+      method: String,
+      location: String,
+      status: Int = 302,
+      isInertia: Boolean = false
+  ): InertiaResponse =
+    InertiaCore.planRedirect(method, location, status, isInertia) match
+      case RedirectPlan.Fragment(loc) =>
+        InertiaResponse(
+          statusCode = StatusCode.Conflict,
+          body = "",
+          headers = List(Header(InertiaCore.HdrRedirect, loc))
+        )
+      case RedirectPlan.Location(loc, st) =>
+        InertiaResponse(
+          statusCode = StatusCode(st),
+          body = "",
+          headers = List(Header("Location", loc))
+        )

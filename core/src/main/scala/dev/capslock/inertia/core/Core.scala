@@ -9,6 +9,14 @@ trait JsonObject[P]:
   def filterKeys(p: P, only: Set[String], except: Set[String]): P
   def toJsonObjectString(p: P): String
 
+  /** `errors` プロパティ（`{errors: {...}}` 形のオブジェクト）を構築する。
+    *
+    * Inertia プロトコルでは props に必ず `errors` を含める必要があり、エラーが
+    * 無い場合は空オブジェクト `{}` を入れる。`errorBag` が指定された場合は
+    * エラーをそのキー配下にネストする（`{errors: {bag: {...}}}`）。
+    */
+  def errors(messages: Map[String, String], errorBag: Option[String]): P
+
 // ── HTTP abstraction ─────────────────────────────────────────────────────────
 
 trait InertiaRequest:
@@ -19,6 +27,7 @@ trait InertiaRequest:
   def partialComponent: Option[String]
   def partialOnly: Set[String]
   def partialExcept: Set[String]
+  def errorBag: Option[String]
 
 // ── Response types ───────────────────────────────────────────────────────────
 
@@ -28,6 +37,15 @@ object InertiaResult:
   case class InertiaHtml[P](page: InertiaPage[P]) extends InertiaResult[P]
   case class Conflict(redirectTo: String)          extends InertiaResult[Nothing]
   case class Redirect(location: String, status: Int) extends InertiaResult[Nothing]
+
+// ── Redirect plan ────────────────────────────────────────────────────────────
+// リダイレクトのレスポンス形。フレームワーク側がこれをレスポンスへ変換する。
+
+enum RedirectPlan:
+  /** Location ヘッダーによる通常のリダイレクト（302/303）。 */
+  case Location(location: String, status: Int)
+  /** 遷移先にフラグメント(#)を含む Inertia リダイレクト。409 + X-Inertia-Redirect。 */
+  case Fragment(location: String)
 
 case class InertiaPage[P](
   component: String,
@@ -45,6 +63,10 @@ object InertiaCore:
   val HdrPartialCmp    = "x-inertia-partial-component"
   val HdrPartialOnly   = "x-inertia-partial-data"
   val HdrPartialExcept = "x-inertia-partial-except"
+  val HdrErrorBag      = "x-inertia-error-bag"
+  // レスポンス側ヘッダー
+  val HdrLocation      = "X-Inertia-Location"
+  val HdrRedirect      = "X-Inertia-Redirect"
 
   def render[P](
     req: InertiaRequest,
@@ -52,20 +74,28 @@ object InertiaCore:
     props: P,
     sharedProps: Option[P] = None,
     version: String = "",
+    errors: Map[String, String] = Map.empty,
     layoutFn: String => String = defaultLayout
   )(using J: JsonObject[P]): InertiaResult[P] =
     val effectiveSharedProps = sharedProps.getOrElse(J.empty)
 
-    if req.isInertia && version.nonEmpty && req.clientVersion.exists(_ != version) then
+    // 資産バージョン不一致による 409 は GET リクエストのみが対象（公式アダプター準拠）。
+    // 非 GET（フォーム送信など）では資産バージョンの差異でリダイレクトを発生させない。
+    if req.isInertia && req.method.toUpperCase == "GET"
+       && version.nonEmpty && req.clientVersion.exists(_ != version) then
       return InertiaResult.Conflict(req.url)
 
     val merged = J.merge(effectiveSharedProps, props)
 
-    val finalProps =
+    val filtered =
       if req.isInertia && req.partialComponent.contains(component) then
         J.filterKeys(merged, req.partialOnly, req.partialExcept)
       else
         merged
+
+    // errors は常に props に含める。partial reload でもフィルタ対象外とするため
+    // フィルタ適用後にマージする。
+    val finalProps = J.merge(filtered, J.errors(errors, req.errorBag))
 
     val page = InertiaPage(component, finalProps, req.url, version)
 
@@ -83,6 +113,27 @@ object InertiaCore:
   ): String =
     val encoded = escapeAttr(pageToJson(page))
     layoutFn(s"""<div id="app" data-page="$encoded"></div>""")
+
+  /** リダイレクト先 URL がフラグメント(#)を含むか。 */
+  def redirectHasFragment(location: String): Boolean = location.contains('#')
+
+  /** リダイレクトのレスポンス形を決定する。
+    *
+    * Inertia リクエストかつ遷移先にフラグメントが含まれる場合は 409 +
+    * X-Inertia-Redirect（[[RedirectPlan.Fragment]]）を、それ以外は通常の
+    * Location リダイレクト（[[RedirectPlan.Location]]、ステータスは
+    * [[normalizeRedirectStatus]] で正規化）を返す。
+    */
+  def planRedirect(
+    method: String,
+    location: String,
+    status: Int,
+    isInertia: Boolean
+  ): RedirectPlan =
+    if isInertia && redirectHasFragment(location) then
+      RedirectPlan.Fragment(location)
+    else
+      RedirectPlan.Location(location, normalizeRedirectStatus(method, status))
 
   def normalizeRedirectStatus(method: String, status: Int): Int =
     if Set("POST","PUT","PATCH","DELETE").contains(method.toUpperCase)

@@ -41,6 +41,19 @@ given JsonObject[Props] with
     else if except.nonEmpty then p.view.filterKeys(!except.contains(_)).toMap
     else p
 
+  // errors を {errors: {...}} 形の Props として構築する。
+  // 値は事前シリアライズ済みの RawJson として保持する。
+  def errors(messages: Map[String, String], errorBag: Option[String]): Props =
+    def quote(s: String): String = writeToString(s)(using stringCodec)
+    val inner =
+      if messages.isEmpty then "{}"
+      else messages.map((k, v) => s"${quote(k)}:${quote(v)}").mkString("{", ",", "}")
+    val errorsJson =
+      errorBag match
+        case Some(bag) if messages.nonEmpty => s"{${quote(bag)}:$inner}"
+        case _                              => inner
+    Map("errors" -> RawJson.raw(errorsJson))
+
   // Map[String, Array[Byte]] -> {"key1":...,"key2":...} JSON string
   // Each value is already serialized, so no re-encoding needed
   def toJsonObjectString(p: Props): String =
