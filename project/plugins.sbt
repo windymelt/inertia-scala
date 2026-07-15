@@ -1,2 +1,2 @@
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.20.0")
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2")
+// sbt 2.x では projectMatrix が in-source 化されているため crossproject プラグインは不要
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.22.0")
