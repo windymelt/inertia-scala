@@ -11,12 +11,12 @@ jobs:
     name: test (${{ matrix.platform }})
     runs-on: ubuntu-latest
     strategy:
-      # 1 軸が落ちても他軸の結果を得られるようにする（軸ごとの切り分けを実効化する）
+      # 1 軸が失敗しても他の軸の実行を打ち切らず、全軸の結果を得られるようにする。
       fail-fast: false
       matrix:
         include:
           # JVM 軸は JVM 専用モジュール（cask）とサンプルのコンパイル検証も担う。
-          # cask はテストを持たないが testOnly * でコンパイルは検証される。
+          # cask はテストを持たないが、testOnly * を実行することでコンパイルを検証できる。
           - platform: jvm
             tasks: '"core/testOnly *" "inertia-cask/testOnly *" "inertia-tapir/testOnly *" "example-cask/compile" "example-tapir/compile"'
           - platform: js
@@ -36,7 +36,7 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
-      # Native 軸のみネイティブツールチェーン（clang / libidn2）が必要。
+      # Native 軸のみ、ネイティブツールチェーン（clang / libidn2）が必要である。
       - name: Set up Scala Native toolchain
         if: matrix.platform == 'native'
         run: sudo apt-get update && sudo apt-get install -y clang libidn2-dev
