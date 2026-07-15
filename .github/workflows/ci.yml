@@ -8,7 +8,21 @@ on:
 
 jobs:
   test:
+    name: test (${{ matrix.platform }})
     runs-on: ubuntu-latest
+    strategy:
+      # 1 軸が落ちても他軸の結果を得られるようにする（軸ごとの切り分けを実効化する）
+      fail-fast: false
+      matrix:
+        include:
+          # JVM 軸は JVM 専用モジュール（cask）とサンプルのコンパイル検証も担う。
+          # cask はテストを持たないが testOnly * でコンパイルは検証される。
+          - platform: jvm
+            tasks: '"core/testOnly *" "inertia-cask/testOnly *" "inertia-tapir/testOnly *" "example-cask/compile" "example-tapir/compile"'
+          - platform: js
+            tasks: '"coreJS/testOnly *" "inertia-tapirJS/testOnly *"'
+          - platform: native
+            tasks: '"coreNative/testOnly *" "inertia-tapirNative/testOnly *"'
     steps:
       - uses: actions/checkout@v4
 
@@ -22,16 +36,10 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
+      # Native 軸のみネイティブツールチェーン（clang / libidn2）が必要。
       - name: Set up Scala Native toolchain
+        if: matrix.platform == 'native'
         run: sudo apt-get update && sudo apt-get install -y clang libidn2-dev
 
-      # core / cask / tapir を JVM・JS 両ターゲットでコンパイル・テストする
-      - name: Compile
-        run: sbt compile
-
-      # Native 起因の失敗を UI 上で切り分けるため JVM/JS と Native を分けて実行する
-      - name: Test (JVM/JS)
-        run: sbt "core/testOnly *" "coreJS/testOnly *" "inertia-tapir/testOnly *" "inertia-tapirJS/testOnly *"
-
-      - name: Test (Native)
-        run: sbt "coreNative/testOnly *" "inertia-tapirNative/testOnly *"
+      - name: Test
+        run: sbt ${{ matrix.tasks }}
