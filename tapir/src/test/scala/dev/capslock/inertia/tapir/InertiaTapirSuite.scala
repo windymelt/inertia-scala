@@ -13,7 +13,7 @@ class InertiaTapirSuite extends munit.FunSuite:
       val afterOnly = if only.nonEmpty then p.filter((k, _) => only.contains(k)) else p
       afterOnly.filterNot((k, _) => except.contains(k))
     def errors(messages: Map[String, String], errorBag: Option[String]) =
-      // テスト用の最小実装。errors を JSON 文字列値として表現する。
+      // Minimal implementation for tests. Represents errors as a JSON string value.
       val inner =
         if messages.isEmpty then "{}"
         else messages.map((k, v) => s""""$k":"$v"""").mkString("{", ",", "}")

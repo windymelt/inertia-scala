@@ -4,7 +4,7 @@ import dev.capslock.inertia.core.JsoniterProps.*
 
 class InertiaCoreSuite extends munit.FunSuite:
 
-  // テスト用の InertiaRequest 実装
+  // InertiaRequest implementation for tests
   case class FakeRequest(
       isInertia: Boolean = false,
       clientVersion: Option[String] = None,
@@ -21,7 +21,7 @@ class InertiaCoreSuite extends munit.FunSuite:
     case r: InertiaResult.InertiaHtml[Props @unchecked] => InertiaCore.pageToJson(r.page)
     case other => fail(s"expected a page result, got $other")
 
-  // ── errors プロパティ ──────────────────────────────────────────────────
+  // ── errors property ────────────────────────────────────────────────────
 
   test("errors は常に props に含まれ、空のときは {} になる") {
     val result = InertiaCore.render(
@@ -68,11 +68,11 @@ class InertiaCoreSuite extends munit.FunSuite:
     )
     val out = json(result)
     assert(out.contains("\"greeting\":\"hi\""), out)
-    assert(!out.contains("\"other\""), out)            // only で除外される
-    assert(out.contains("\"errors\":{\"name\":\"ng\"}"), out) // errors は残る
+    assert(!out.contains("\"other\""), out)            // excluded by only
+    assert(out.contains("\"errors\":{\"name\":\"ng\"}"), out) // errors remains
   }
 
-  // ── バージョン競合（GET 限定） ─────────────────────────────────────────
+  // ── Version conflict (GET only) ────────────────────────────────────────
 
   test("GET でバージョン不一致なら 409 Conflict") {
     val req = FakeRequest(isInertia = true, method = "GET", clientVersion = Some("old"))
@@ -86,7 +86,7 @@ class InertiaCoreSuite extends munit.FunSuite:
     assert(result.isInstanceOf[InertiaResult.InertiaJson[?]], result.toString)
   }
 
-  // ── リダイレクト計画 ────────────────────────────────────────────────────
+  // ── Redirect plan ──────────────────────────────────────────────────────
 
   test("planRedirect: 通常の遷移先は Location リダイレクト") {
     assertEquals(

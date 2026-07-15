@@ -79,6 +79,6 @@ root (aggregate)
 
 `JsonObject[MyProps]` の `given` インスタンスを実装するだけでよい。`examples/tapir/BorerProps.scala` が borer DOM を使った実装例になっている。フレームワーク側の変更は不要。
 
-### Code is in Japanese
+### Code comments are in English
 
-コードベースのコメントとドキュメントは日本語で記述する。
+コードベースのコメントは英語で記述する。

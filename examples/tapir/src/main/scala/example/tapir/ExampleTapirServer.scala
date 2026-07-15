@@ -104,8 +104,8 @@ object ExampleTapirServer:
       cborBase64: Option[String] = None,
       error: Option[String] = None
   ): InertiaResponse =
-    // エラーは Inertia 標準の errors メカニズムで返す。クライアントの useForm が
-    // errors.jsonInput として拾う。空メッセージの場合は errors: {} になる。
+    // Errors are returned through Inertia's standard errors mechanism. The client's
+    // useForm picks it up as errors.jsonInput. An empty message results in errors: {}.
     InertiaTapir.render(
       headers, "/convert", "POST", "Converter",
       Props.of(

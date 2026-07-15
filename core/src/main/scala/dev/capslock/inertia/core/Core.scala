@@ -9,11 +9,11 @@ trait JsonObject[P]:
   def filterKeys(p: P, only: Set[String], except: Set[String]): P
   def toJsonObjectString(p: P): String
 
-  /** `errors` プロパティ（`{errors: {...}}` 形のオブジェクト）を構築する。
+  /** Build the `errors` property (an object shaped like `{errors: {...}}`).
     *
-    * Inertia プロトコルでは props に必ず `errors` を含める必要があり、エラーが
-    * 無い場合は空オブジェクト `{}` を入れる。`errorBag` が指定された場合は
-    * エラーをそのキー配下にネストする（`{errors: {bag: {...}}}`）。
+    * The Inertia protocol requires props to always include `errors`; when there
+    * are no errors, an empty object `{}` is used. When `errorBag` is given,
+    * the errors are nested under that key (`{errors: {bag: {...}}}`).
     */
   def errors(messages: Map[String, String], errorBag: Option[String]): P
 
@@ -39,12 +39,12 @@ object InertiaResult:
   case class Redirect(location: String, status: Int) extends InertiaResult[Nothing]
 
 // ── Redirect plan ────────────────────────────────────────────────────────────
-// リダイレクトのレスポンス形。フレームワーク側がこれをレスポンスへ変換する。
+// The shape of a redirect response. Framework integrations convert this into an actual response.
 
 enum RedirectPlan:
-  /** Location ヘッダーによる通常のリダイレクト（302/303）。 */
+  /** A normal redirect via the Location header (302/303). */
   case Location(location: String, status: Int)
-  /** 遷移先にフラグメント(#)を含む Inertia リダイレクト。409 + X-Inertia-Redirect。 */
+  /** An Inertia redirect whose destination contains a fragment (#). 409 + X-Inertia-Redirect. */
   case Fragment(location: String)
 
 case class InertiaPage[P](
@@ -64,7 +64,7 @@ object InertiaCore:
   val HdrPartialOnly   = "x-inertia-partial-data"
   val HdrPartialExcept = "x-inertia-partial-except"
   val HdrErrorBag      = "x-inertia-error-bag"
-  // レスポンス側ヘッダー
+  // Response-side headers
   val HdrLocation      = "X-Inertia-Location"
   val HdrRedirect      = "X-Inertia-Redirect"
 
@@ -79,8 +79,8 @@ object InertiaCore:
   )(using J: JsonObject[P]): InertiaResult[P] =
     val effectiveSharedProps = sharedProps.getOrElse(J.empty)
 
-    // 資産バージョン不一致による 409 は GET リクエストのみが対象（公式アダプター準拠）。
-    // 非 GET（フォーム送信など）では資産バージョンの差異でリダイレクトを発生させない。
+    // A 409 for asset version mismatch only applies to GET requests (matching the official adapter).
+    // For non-GET requests (form submissions, etc.) an asset version mismatch does not trigger a redirect.
     if req.isInertia && req.method.toUpperCase == "GET"
        && version.nonEmpty && req.clientVersion.exists(_ != version) then
       return InertiaResult.Conflict(req.url)
@@ -93,8 +93,8 @@ object InertiaCore:
       else
         merged
 
-    // errors は常に props に含める。partial reload でもフィルタ対象外とするため
-    // フィルタ適用後にマージする。
+    // errors is always included in props. It's merged in after filtering so that
+    // it stays exempt from partial reload filtering.
     val finalProps = J.merge(filtered, J.errors(errors, req.errorBag))
 
     val page = InertiaPage(component, finalProps, req.url, version)
@@ -114,15 +114,15 @@ object InertiaCore:
     val encoded = escapeAttr(pageToJson(page))
     layoutFn(s"""<div id="app" data-page="$encoded"></div>""")
 
-  /** リダイレクト先 URL がフラグメント(#)を含むか。 */
+  /** Whether the redirect destination URL contains a fragment (#). */
   def redirectHasFragment(location: String): Boolean = location.contains('#')
 
-  /** リダイレクトのレスポンス形を決定する。
+  /** Determine the shape of a redirect response.
     *
-    * Inertia リクエストかつ遷移先にフラグメントが含まれる場合は 409 +
-    * X-Inertia-Redirect（[[RedirectPlan.Fragment]]）を、それ以外は通常の
-    * Location リダイレクト（[[RedirectPlan.Location]]、ステータスは
-    * [[normalizeRedirectStatus]] で正規化）を返す。
+    * When the request is an Inertia request and the destination contains a
+    * fragment, returns 409 + X-Inertia-Redirect ([[RedirectPlan.Fragment]]);
+    * otherwise returns a normal Location redirect ([[RedirectPlan.Location]],
+    * with the status normalized via [[normalizeRedirectStatus]]).
     */
   def planRedirect(
     method: String,
