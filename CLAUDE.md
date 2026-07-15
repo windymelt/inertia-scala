@@ -16,6 +16,10 @@ inertia-scala は Inertia.js プロトコルの Scala 3 実装です。サーバ
 
 `sbtn`（thin client）を優先し、`sbt` は `~compile` 等の継続モードにのみ使用する。
 
+### Scala Native のシステム依存
+
+Native ターゲット（`coreNative` / `inertia-tapirNative`）のリンク（`nativeLink`／テスト実行）には `clang` と `libidn2` の開発パッケージが必要です（Ubuntu: `libidn2-dev` / openSUSE: `libidn2-devel`）。`clang` のみでは inertia-tapir の Native リンクが `-lidn2` 不足で失敗します。
+
 ### Cross-build targets
 
 - **JVM のみビルド:** `sbtn coreJVM/compile`

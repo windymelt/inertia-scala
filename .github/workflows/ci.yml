@@ -22,9 +22,16 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
+      - name: Set up Scala Native toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang libidn2-dev
+
       # core / cask / tapir を JVM・JS 両ターゲットでコンパイル・テストする
       - name: Compile
         run: sbt compile
 
-      - name: Test
-        run: sbt test
+      # Native 起因の失敗を UI 上で切り分けるため JVM/JS と Native を分けて実行する
+      - name: Test (JVM/JS)
+        run: sbt "core/testOnly *" "coreJS/testOnly *" "inertia-tapir/testOnly *" "inertia-tapirJS/testOnly *"
+
+      - name: Test (Native)
+        run: sbt "coreNative/testOnly *" "inertia-tapirNative/testOnly *"
