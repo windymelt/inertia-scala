@@ -154,10 +154,10 @@ object InertiaTapir:
 
   // ── Redirect helper ─────────────────────────────────────────────────────
 
-  /** リダイレクトレスポンスを生成する。
+  /** Build a redirect response.
     *
-    * `isInertia` が true かつ遷移先にフラグメント(#)が含まれる場合は
-    * 409 + X-Inertia-Redirect を、それ以外は Location リダイレクト（302/303）を返す。
+    * When `isInertia` is true and the destination contains a fragment (#),
+    * returns 409 + X-Inertia-Redirect; otherwise returns a Location redirect (302/303).
     */
   def redirect(
       method: String,

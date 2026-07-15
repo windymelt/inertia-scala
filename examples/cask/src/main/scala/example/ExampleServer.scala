@@ -114,9 +114,9 @@ object ExampleServer extends cask.MainRoutes:
       case Some(user) => renderUserShow(req, user)
       case None       => cask.Response("Not Found", statusCode = 404)
 
-  // Users/Show をレンダリングする共通ヘルパー。
-  // errors は呼び出し側が渡すだけでよく、どの error bag に入れるかは
-  // クライアントが送る X-Inertia-Error-Bag を見て core が自動でネストする。
+  // Shared helper that renders Users/Show.
+  // Callers just pass errors through; which error bag they end up nested under
+  // is decided automatically by the core based on the X-Inertia-Error-Bag header the client sends.
   private def renderUserShow(
     req: cask.Request,
     user: User,
@@ -133,7 +133,7 @@ object ExampleServer extends cask.MainRoutes:
       layoutFn = layout
     )
 
-  // プロフィール更新フォーム。クライアントは errorBag "updateProfile" で送る。
+  // Profile update form. The client sends this with errorBag "updateProfile".
   @cask.post("/users/:id/profile")
   def updateProfile(req: cask.Request, id: Int) =
     users.find(_.id == id) match
@@ -154,8 +154,8 @@ object ExampleServer extends cask.MainRoutes:
           )
           InertiaCask.redirect(req, s"/users/$id", 303)
 
-  // パスワード変更フォーム。クライアントは errorBag "updatePassword" で送る。
-  // （デモのためパスワードは保存しない。）
+  // Password change form. The client sends this with errorBag "updatePassword".
+  // (For the demo, the password is not actually persisted.)
   @cask.post("/users/:id/password")
   def updatePassword(req: cask.Request, id: Int) =
     users.find(_.id == id) match
@@ -197,17 +197,17 @@ object ExampleServer extends cask.MainRoutes:
       layoutFn = layout
     )
 
-  // @cask.postJson は戻り値の本文を再度 JSON 文字列化してしまうため、
-  // JSON 本文を持つ Inertia レスポンスを返すここでは @cask.post を使い、
-  // リクエスト本文を手動でパースする。
+  // @cask.postJson re-serializes the return value's body as JSON, so here—where
+  // we need to return an Inertia response that already has a JSON body—we use
+  // @cask.post instead and parse the request body manually.
   @cask.post("/todos")
   def todoCreate(req: cask.Request) =
     val title = readFromString[CreateTodoRequest](req.text()).title
     if title.trim.isEmpty then
-      // サーバーサイドバリデーション。errors を付けて同じコンポーネントを返すと、
-      // クライアントの useForm が form.errors として拾う。
-      // （本ライブラリはセッション機構を持たないため、303 リダイレクト + フラッシュ
-      //   ではなく、その場で errors 付きのページを返す方式を採る。）
+      // Server-side validation. Returning the same component with errors attached
+      // lets the client's useForm pick it up as form.errors.
+      // (Since this library has no session mechanism, we return a page with
+      //  errors attached directly, rather than a 303 redirect + flash.)
       InertiaCask.render(
         req,
         component = "Todos/Index",
@@ -219,10 +219,11 @@ object ExampleServer extends cask.MainRoutes:
       val todo = Todo(todoNextId, title.trim, done = false)
       todoNextId += 1
       todos = todos :+ todo
-      // 通常の 303 リダイレクト。
-      // 注: フラグメント付きリダイレクト（409 + X-Inertia-Redirect）はサーバー側で
-      //     対応済みだが、現行クライアント @inertiajs/core 2.3.18 が x-inertia-redirect を
-      //     処理しないため、サンプルでは通常リダイレクトを使う。
+      // A normal 303 redirect.
+      // Note: a fragment-carrying redirect (409 + X-Inertia-Redirect) is already
+      //       supported on the server side, but since the current client
+      //       @inertiajs/core 2.3.18 doesn't handle x-inertia-redirect, the
+      //       example uses a normal redirect instead.
       InertiaCask.redirect(req, "/todos", 303)
 
   @cask.postJson("/todos/:id/toggle")

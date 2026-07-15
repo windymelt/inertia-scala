@@ -41,8 +41,8 @@ given JsonObject[Props] with
     else if except.nonEmpty then p.view.filterKeys(!except.contains(_)).toMap
     else p
 
-  // errors を {errors: {...}} 形の Props として構築する。
-  // 値は事前シリアライズ済みの RawJson として保持する。
+  // Build errors as a Props shaped like {errors: {...}}.
+  // The value is kept as a pre-serialized RawJson.
   def errors(messages: Map[String, String], errorBag: Option[String]): Props =
     def quote(s: String): String = writeToString(s)(using stringCodec)
     val inner =
