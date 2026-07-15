@@ -8,7 +8,20 @@ on:
 
 jobs:
   test:
+    name: test (${{ matrix.platform }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The JVM axis also verifies that the JVM-only module (cask) and the
+          # examples compile. cask has no tests, but testOnly * still compiles it.
+          - platform: jvm
+            tasks: '"core/testOnly *" "inertia-cask/testOnly *" "inertia-tapir/testOnly *" "example-cask/compile" "example-tapir/compile"'
+          - platform: js
+            tasks: '"coreJS/testOnly *" "inertia-tapirJS/testOnly *"'
+          - platform: native
+            tasks: '"coreNative/testOnly *" "inertia-tapirNative/testOnly *"'
     steps:
       - uses: actions/checkout@v4
 
@@ -22,9 +35,9 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
-      # core / cask / tapir を JVM・JS 両ターゲットでコンパイル・テストする
-      - name: Compile
-        run: sbt compile
+      - name: Set up Scala Native toolchain
+        if: matrix.platform == 'native'
+        run: sudo apt-get update && sudo apt-get install -y clang libidn2-dev
 
       - name: Test
-        run: sbt test
+        run: sbt ${{ matrix.tasks }}
