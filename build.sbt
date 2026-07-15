@@ -2,9 +2,15 @@ val scala3Version = "3.3.7"
 val tapirVersion  = "1.11.33"
 val borerVersion  = "1.14.1"
 
-// projectMatrix で JVM/JS へクロスビルドする。bare settings は全 subproject に適用されるため
-// version は LocalRootProject にスコープする。
-LocalRootProject / version := "0.1.0-SNAPSHOT"
+inThisBuild(List(
+  organization := "dev.capslock",
+  homepage := Some(url("https://github.com/windymelt/inertia-scala")),
+  licenses := List("BSD-3-Clause" -> url("https://spdx.org/licenses/BSD-3-Clause.html")),
+  developers := List(Developer("windymelt", "Windymelt", "windymelt@capslock.dev", url("https://www.3qe.us"))),
+  scmInfo := Some(ScmInfo(url("https://github.com/windymelt/inertia-scala"), "scm:git:https://github.com/windymelt/inertia-scala.git")),
+  versionScheme := Some("early-semver"),
+  description := "Server-side adapter implementing the Inertia.js protocol for Scala 3, decoupled from any specific JSON library or HTTP framework."
+))
 
 lazy val root = (project in file("."))
   .aggregate(
