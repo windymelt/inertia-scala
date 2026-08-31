@@ -1,5 +1,7 @@
 # inertia-scala
 
+[![Maven Central](https://maven-badges.sml.io/maven-central/dev.capslock/inertia-core_3/badge.svg)](https://maven-badges.sml.io/maven-central/dev.capslock/inertia-core_3/)
+
 *English version: [README.md](./README.md)*
 
 ```scala
@@ -43,14 +45,11 @@ inertia-scala は [Inertia.js](https://inertiajs.com/) プロトコルの Scala 
 
 ```scala
 libraryDependencies ++= Seq(
-  "dev.capslock" %% "inertia-core"  % "<version>",
-  "dev.capslock" %% "inertia-cask"  % "<version>",  // Cask 統合
-  "dev.capslock" %% "inertia-tapir" % "<version>"   // Tapir 統合
+  "dev.capslock" %% "inertia-core"  % "0.1.0",
+  "dev.capslock" %% "inertia-cask"  % "0.1.0",  // Cask 統合
+  "dev.capslock" %% "inertia-tapir" % "0.1.0"   // Tapir 統合
 )
 ```
-
-> [!NOTE]
-> Maven Central への公開はまだ行われていません。最初のリリースまでは、このリポジトリをクローンして `sbt publishLocal` を実行してください。
 
 フレームワーク依存（`cask`、`tapir-core`）は `Provided` スコープなので、使うフレームワークは自分の依存に追加してください。`inertia-core` と `inertia-tapir` は JVM / Scala.js / Scala Native にクロスビルドされ、`inertia-cask` は JVM 専用です（Scala.js / Scala Native プロジェクトでは `%%%` を使ってください）。
 
