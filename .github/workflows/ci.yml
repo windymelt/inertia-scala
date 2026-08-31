@@ -22,8 +22,10 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1
 
+      # sbt 2 joins CLI args into a single command line, so multiple
+      # commands must be separated with semicolons.
       - name: Check formatting
-        run: sbt scalafmtCheckAll scalafmtSbtCheck
+        run: sbt 'scalafmtCheckAll; scalafmtSbtCheck'
 
       - name: Check scalafix rules
         run: sbt 'scalafixAll --check'
@@ -38,12 +40,14 @@ jobs:
         include:
           # The JVM axis also verifies that the JVM-only module (cask) and the
           # examples compile. cask has no tests, but testOnly * still compiles it.
+          # sbt 2 joins CLI args into a single command line, so the tasks are
+          # separated with semicolons instead of being passed as separate args.
           - platform: jvm
-            tasks: '"core/testOnly *" "inertia-cask/testOnly *" "inertia-tapir/testOnly *" "example-cask/compile" "example-tapir/compile"'
+            tasks: 'core/testOnly *; inertia-cask/testOnly *; inertia-tapir/testOnly *; example-cask/compile; example-tapir/compile'
           - platform: js
-            tasks: '"coreJS/testOnly *" "inertia-tapirJS/testOnly *"'
+            tasks: 'coreJS/testOnly *; inertia-tapirJS/testOnly *'
           - platform: native
-            tasks: '"coreNative/testOnly *" "inertia-tapirNative/testOnly *"'
+            tasks: 'coreNative/testOnly *; inertia-tapirNative/testOnly *'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -62,7 +66,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y clang libidn2-dev
 
       - name: Test
-        run: sbt ${{ matrix.tasks }}
+        run: sbt '${{ matrix.tasks }}'
 
   ci-passed:
     needs: [lint, test]
