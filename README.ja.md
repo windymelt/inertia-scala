@@ -1,5 +1,6 @@
 # inertia-scala
 
+[![Latest version](https://index.scala-lang.org/windymelt/inertia-scala/inertia-core/latest.svg)](https://index.scala-lang.org/windymelt/inertia-scala/inertia-core)
 [![Maven Central](https://maven-badges.sml.io/maven-central/dev.capslock/inertia-core_3/badge.svg)](https://maven-badges.sml.io/maven-central/dev.capslock/inertia-core_3/)
 
 *English version: [README.md](./README.md)*
