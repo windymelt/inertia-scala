@@ -7,7 +7,7 @@ Inertia.js 公式プロトコル仕様（https://inertiajs.com/the-protocol）�
 
 - 初期 HTML レスポンスと Inertia JSON レスポンスの出し分け
 - `X-Inertia` / `Vary: X-Inertia` レスポンスヘッダー
-- 資産バージョン不一致時の `409 Conflict` + `X-Inertia-Location`（**GET 限定**）
+- アセットバージョン不一致時の `409 Conflict` + `X-Inertia-Location`（**GET 限定**）
 - partial reload（`X-Inertia-Partial-Component` 照合、`only` / `except` フィルタ）
 - shared props のマージ
 - `POST/PUT/PATCH/DELETE` の 302→303 リダイレクト正規化
@@ -118,7 +118,7 @@ Cask サンプルの `Users/Show` でプロフィール更新・パスワード�
 公式 inertia-laravel の `Middleware.php` で `$request->method() === 'GET'` に限定されている
 ことを確認し、`render` を GET 限定に修正した。
 
-### B. 資産バージョンの算出ヘルパー
+### B. アセットバージョンの算出ヘルパー
 
 現在 `version` は呼び出し側が文字列で渡す前提。マニフェストのハッシュ等から
 バージョンを算出するヘルパーを提供するかは要検討（仕様上は必須ではない）。
