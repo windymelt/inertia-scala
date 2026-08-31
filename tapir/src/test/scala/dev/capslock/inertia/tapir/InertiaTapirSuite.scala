@@ -7,11 +7,12 @@ class InertiaTapirSuite extends munit.FunSuite:
 
   // Minimal JsonObject for testing
   given JsonObject[Map[String, String]] with
-    def empty = Map.empty
-    def merge(base: Map[String, String], overlay: Map[String, String]) = base ++ overlay
+    def empty                                                                      = Map.empty
+    def merge(base: Map[String, String], overlay: Map[String, String])             = base ++ overlay
     def filterKeys(p: Map[String, String], only: Set[String], except: Set[String]) =
       val afterOnly = if only.nonEmpty then p.filter((k, _) => only.contains(k)) else p
       afterOnly.filterNot((k, _) => except.contains(k))
+
     def errors(messages: Map[String, String], errorBag: Option[String]) =
       // Minimal implementation for tests. Represents errors as a JSON string value.
       val inner =
@@ -21,6 +22,7 @@ class InertiaTapirSuite extends munit.FunSuite:
         case Some(bag) if messages.nonEmpty => s"""{"$bag":$inner}"""
         case _                              => inner
       Map("errors" -> json)
+
     def toJsonObjectString(p: Map[String, String]) =
       p.map((k, v) => s""""$k":"$v"""").mkString("{", ",", "}")
 
@@ -29,7 +31,7 @@ class InertiaTapirSuite extends munit.FunSuite:
     clientVersion = None,
     partialComponent = None,
     partialOnly = Set.empty,
-    partialExcept = Set.empty
+    partialExcept = Set.empty,
   )
 
   private val inertiaHeaders = InertiaHeaders(
@@ -37,12 +39,16 @@ class InertiaTapirSuite extends munit.FunSuite:
     clientVersion = None,
     partialComponent = None,
     partialOnly = Set.empty,
-    partialExcept = Set.empty
+    partialExcept = Set.empty,
   )
 
   test("render returns HTML for non-Inertia request") {
     val resp = InertiaTapir.render(
-      noHeaders, "/test", "GET", "TestPage", Map("key" -> "value")
+      noHeaders,
+      "/test",
+      "GET",
+      "TestPage",
+      Map("key" -> "value"),
     )
     assertEquals(resp.statusCode, StatusCode.Ok)
     assert(resp.body.contains("data-page="))
@@ -51,7 +57,11 @@ class InertiaTapirSuite extends munit.FunSuite:
 
   test("render returns JSON for Inertia request") {
     val resp = InertiaTapir.render(
-      inertiaHeaders, "/test", "GET", "TestPage", Map("key" -> "value")
+      inertiaHeaders,
+      "/test",
+      "GET",
+      "TestPage",
+      Map("key" -> "value"),
     )
     assertEquals(resp.statusCode, StatusCode.Ok)
     assert(resp.body.contains("\"component\":\"TestPage\""))
@@ -60,8 +70,13 @@ class InertiaTapirSuite extends munit.FunSuite:
 
   test("render returns 409 Conflict on version mismatch") {
     val headers = inertiaHeaders.copy(clientVersion = Some("old"))
-    val resp = InertiaTapir.render(
-      headers, "/test", "GET", "TestPage", Map.empty[String, String], version = "new"
+    val resp    = InertiaTapir.render(
+      headers,
+      "/test",
+      "GET",
+      "TestPage",
+      Map.empty[String, String],
+      version = "new",
     )
     assertEquals(resp.statusCode, StatusCode.Conflict)
     assert(resp.headers.exists(h => h.name == "X-Inertia-Location" && h.value == "/test"))

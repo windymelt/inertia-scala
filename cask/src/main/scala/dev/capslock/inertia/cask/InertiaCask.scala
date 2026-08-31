@@ -12,79 +12,77 @@ class CaskInertiaRequest(req: cask.Request) extends InertiaRequest:
       .map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
       .getOrElse(Set.empty)
 
-  val isInertia: Boolean              = req.headers.contains(InertiaCore.HdrInertia)
-  val clientVersion: Option[String]   = header(InertiaCore.HdrVersion)
+  val isInertia: Boolean               = req.headers.contains(InertiaCore.HdrInertia)
+  val clientVersion: Option[String]    = header(InertiaCore.HdrVersion)
   val partialComponent: Option[String] = header(InertiaCore.HdrPartialCmp)
-  val partialOnly: Set[String]        = headerList(InertiaCore.HdrPartialOnly)
-  val partialExcept: Set[String]      = headerList(InertiaCore.HdrPartialExcept)
-  val errorBag: Option[String]        = header(InertiaCore.HdrErrorBag)
-  val method: String                  = req.exchange.getRequestMethod.toString.toUpperCase
-  val url: String =
+  val partialOnly: Set[String]         = headerList(InertiaCore.HdrPartialOnly)
+  val partialExcept: Set[String]       = headerList(InertiaCore.HdrPartialExcept)
+  val errorBag: Option[String]         = header(InertiaCore.HdrErrorBag)
+  val method: String                   = req.exchange.getRequestMethod.toString.toUpperCase
+  val url: String                      =
     val path = req.exchange.getRequestPath
     val qs   = req.exchange.getQueryString
     if qs.isEmpty then path else s"$path?$qs"
 
 object InertiaCask:
 
-  /**
-   * Render a component from a Cask route handler.
-   * P can be any type with a JsonObject[P] instance.
-   * Typically Props (= Map[String, RawJson]) is used.
-   */
+  /** Render a component from a Cask route handler. P can be any type with a JsonObject[P] instance. Typically Props (=
+    * Map[String, RawJson]) is used.
+    */
   def render[P](
     req: cask.Request,
     component: String,
     props: P,
-    sharedProps: Option[P]     = None,
-    version: String            = "",
+    sharedProps: Option[P] = None,
+    version: String = "",
     errors: Map[String, String] = Map.empty,
-    layoutFn: String => String = InertiaCore.defaultLayout
+    layoutFn: String => String = InertiaCore.defaultLayout,
   )(using J: JsonObject[P]): cask.Response[String] =
-    val ireq = CaskInertiaRequest(req)
+    val ireq                     = CaskInertiaRequest(req)
     val result: InertiaResult[P] =
       InertiaCore.render(ireq, component, props, sharedProps, version, errors)
     resultToResponse(result, layoutFn)
 
   private def resultToResponse[P: JsonObject](
     result: InertiaResult[P],
-    layoutFn: String => String
+    layoutFn: String => String,
   ): cask.Response[String] = result match
     case r: InertiaResult.InertiaJson[P @unchecked] =>
       cask.Response(
-        data       = InertiaCore.pageToJson(r.page),
+        data = InertiaCore.pageToJson(r.page),
         statusCode = 200,
-        headers    = Seq(
+        headers = Seq(
           "Content-Type" -> "application/json; charset=utf-8",
           "X-Inertia"    -> "true",
-          "Vary"         -> "X-Inertia"
-        )
+          "Vary"         -> "X-Inertia",
+        ),
       )
 
     case r: InertiaResult.InertiaHtml[P @unchecked] =>
       cask.Response(
-        data       = InertiaCore.pageToHtml(r.page, layoutFn),
+        data = InertiaCore.pageToHtml(r.page, layoutFn),
         statusCode = 200,
-        headers    = Seq("Content-Type" -> "text/html; charset=utf-8")
+        headers = Seq("Content-Type" -> "text/html; charset=utf-8"),
       )
 
     case InertiaResult.Conflict(location) =>
       cask.Response(
-        data       = "",
+        data = "",
         statusCode = 409,
-        headers    = Seq("X-Inertia-Location" -> location)
+        headers = Seq("X-Inertia-Location" -> location),
       )
 
     case InertiaResult.Redirect(location, status) =>
       cask.Response(
-        data       = "",
+        data = "",
         statusCode = status,
-        headers    = Seq("Location" -> location)
+        headers = Seq("Location" -> location),
       )
 
   def redirect(
     req: cask.Request,
     location: String,
-    status: Int = 302
+    status: Int = 302,
   ): cask.Response[String] =
     val ireq = CaskInertiaRequest(req)
     InertiaCore.planRedirect(ireq.method, location, status, ireq.isInertia) match

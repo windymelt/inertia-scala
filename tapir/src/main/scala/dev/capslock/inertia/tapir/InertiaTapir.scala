@@ -1,41 +1,42 @@
 package dev.capslock.inertia.tapir
 
 import dev.capslock.inertia.core.*
-import sttp.model.{Header, StatusCode}
+import sttp.model.Header
+import sttp.model.StatusCode
 import sttp.tapir.*
 
 // ── Inertia headers extracted from a Tapir request ──────────────────────────
 
 case class InertiaHeaders(
-    isInertia: Boolean,
-    clientVersion: Option[String],
-    partialComponent: Option[String],
-    partialOnly: Set[String],
-    partialExcept: Set[String],
-    errorBag: Option[String] = None
+  isInertia: Boolean,
+  clientVersion: Option[String],
+  partialComponent: Option[String],
+  partialOnly: Set[String],
+  partialExcept: Set[String],
+  errorBag: Option[String] = None,
 )
 
 // ── InertiaRequest implementation backed by extracted headers ────────────────
 
 class TapirInertiaRequest(
-    headers: InertiaHeaders,
-    val url: String,
-    val method: String
+  headers: InertiaHeaders,
+  val url: String,
+  val method: String,
 ) extends InertiaRequest:
-  val isInertia: Boolean              = headers.isInertia
-  val clientVersion: Option[String]   = headers.clientVersion
+  val isInertia: Boolean               = headers.isInertia
+  val clientVersion: Option[String]    = headers.clientVersion
   val partialComponent: Option[String] = headers.partialComponent
-  val partialOnly: Set[String]        = headers.partialOnly
-  val partialExcept: Set[String]      = headers.partialExcept
-  val errorBag: Option[String]        = headers.errorBag
+  val partialOnly: Set[String]         = headers.partialOnly
+  val partialExcept: Set[String]       = headers.partialExcept
+  val errorBag: Option[String]         = headers.errorBag
 
 // ── Tapir-friendly response ─────────────────────────────────────────────────
 
 /** Framework-agnostic Inertia response that can be returned from Tapir server logic. */
 case class InertiaResponse(
-    statusCode: StatusCode,
-    body: String,
-    headers: List[Header]
+  statusCode: StatusCode,
+  body: String,
+  headers: List[Header],
 )
 
 // ── Main binding ────────────────────────────────────────────────────────────
@@ -67,7 +68,7 @@ object InertiaTapir:
       partialComponent = t._3,
       partialOnly = parseCommaSeparated(t._4),
       partialExcept = parseCommaSeparated(t._5),
-      errorBag = t._6
+      errorBag = t._6,
     )
 
   private def headersToTuple(h: InertiaHeaders): HeaderTuple =
@@ -77,14 +78,13 @@ object InertiaTapir:
       h.partialComponent,
       if h.partialOnly.nonEmpty then Some(h.partialOnly.mkString(", ")) else None,
       if h.partialExcept.nonEmpty then Some(h.partialExcept.mkString(", ")) else None,
-      h.errorBag
+      h.errorBag,
     )
 
   // ── Output definition ───────────────────────────────────────────────────
 
-  /** Tapir EndpointOutput that carries an InertiaResponse (status code, body, headers).
-    * Declares TextHtml format so browsers' `Accept: text/html` matches.
-    * The actual Content-Type is set explicitly in InertiaResponse.headers
+  /** Tapir EndpointOutput that carries an InertiaResponse (status code, body, headers). Declares TextHtml format so
+    * browsers' `Accept: text/html` matches. The actual Content-Type is set explicitly in InertiaResponse.headers
     * (text/html for initial loads, application/json for Inertia XHR).
     */
   val inertiaOutput: EndpointOutput[InertiaResponse] =
@@ -103,23 +103,23 @@ object InertiaTapir:
 
   /** Call InertiaCore.render and convert the result to an InertiaResponse. */
   def render[P](
-      headers: InertiaHeaders,
-      url: String,
-      method: String,
-      component: String,
-      props: P,
-      sharedProps: Option[P] = None,
-      version: String = "",
-      errors: Map[String, String] = Map.empty,
-      layoutFn: String => String = InertiaCore.defaultLayout
+    headers: InertiaHeaders,
+    url: String,
+    method: String,
+    component: String,
+    props: P,
+    sharedProps: Option[P] = None,
+    version: String = "",
+    errors: Map[String, String] = Map.empty,
+    layoutFn: String => String = InertiaCore.defaultLayout,
   )(using J: JsonObject[P]): InertiaResponse =
     val req    = TapirInertiaRequest(headers, url, method)
     val result = InertiaCore.render(req, component, props, sharedProps, version, errors)
     resultToResponse(result, layoutFn)
 
   private def resultToResponse[P: JsonObject](
-      result: InertiaResult[P],
-      layoutFn: String => String
+    result: InertiaResult[P],
+    layoutFn: String => String,
   ): InertiaResponse = result match
     case r: InertiaResult.InertiaJson[P @unchecked] =>
       InertiaResponse(
@@ -128,53 +128,53 @@ object InertiaTapir:
         headers = List(
           Header("Content-Type", "application/json; charset=utf-8"),
           Header("X-Inertia", "true"),
-          Header("Vary", "X-Inertia")
-        )
+          Header("Vary", "X-Inertia"),
+        ),
       )
     case r: InertiaResult.InertiaHtml[P @unchecked] =>
       InertiaResponse(
         statusCode = StatusCode.Ok,
         body = InertiaCore.pageToHtml(r.page, layoutFn),
         headers = List(
-          Header("Content-Type", "text/html; charset=utf-8")
-        )
+          Header("Content-Type", "text/html; charset=utf-8"),
+        ),
       )
     case InertiaResult.Conflict(location) =>
       InertiaResponse(
         statusCode = StatusCode.Conflict,
         body = "",
-        headers = List(Header("X-Inertia-Location", location))
+        headers = List(Header("X-Inertia-Location", location)),
       )
     case InertiaResult.Redirect(location, status) =>
       InertiaResponse(
         statusCode = StatusCode(status),
         body = "",
-        headers = List(Header("Location", location))
+        headers = List(Header("Location", location)),
       )
 
   // ── Redirect helper ─────────────────────────────────────────────────────
 
   /** Build a redirect response.
     *
-    * When `isInertia` is true and the destination contains a fragment (#),
-    * returns 409 + X-Inertia-Redirect; otherwise returns a Location redirect (302/303).
+    * When `isInertia` is true and the destination contains a fragment (#), returns 409 + X-Inertia-Redirect; otherwise
+    * returns a Location redirect (302/303).
     */
   def redirect(
-      method: String,
-      location: String,
-      status: Int = 302,
-      isInertia: Boolean = false
+    method: String,
+    location: String,
+    status: Int = 302,
+    isInertia: Boolean = false,
   ): InertiaResponse =
     InertiaCore.planRedirect(method, location, status, isInertia) match
       case RedirectPlan.Fragment(loc) =>
         InertiaResponse(
           statusCode = StatusCode.Conflict,
           body = "",
-          headers = List(Header(InertiaCore.HdrRedirect, loc))
+          headers = List(Header(InertiaCore.HdrRedirect, loc)),
         )
       case RedirectPlan.Location(loc, st) =>
         InertiaResponse(
           statusCode = StatusCode(st),
           body = "",
-          headers = List(Header("Location", loc))
+          headers = List(Header("Location", loc)),
         )
