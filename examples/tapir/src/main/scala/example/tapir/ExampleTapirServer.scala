@@ -1,14 +1,21 @@
 package example.tapir
 
 import dev.capslock.inertia.tapir.*
-import example.tapir.BorerProps.{Props, str, nil, given}
-import io.bullet.borer.{Cbor, Dom, Json}
+import example.tapir.BorerProps.Props
+import example.tapir.BorerProps.given
+import example.tapir.BorerProps.nil
+import example.tapir.BorerProps.str
+import io.bullet.borer.Cbor
+import io.bullet.borer.Dom
+import io.bullet.borer.Json
 import sttp.tapir.*
-import sttp.tapir.server.netty.{NettyFutureServer, NettyFutureServerBinding}
+import sttp.tapir.server.netty.NettyFutureServer
+import sttp.tapir.server.netty.NettyFutureServerBinding
 
 import java.util.Base64
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 object ExampleTapirServer:
@@ -47,14 +54,17 @@ object ExampleTapirServer:
     .serverLogicSuccess[Future] { headers =>
       Future.successful(
         InertiaTapir.render(
-          headers, "/", "GET", "Converter",
+          headers,
+          "/",
+          "GET",
+          "Converter",
           Props.of(
             "input"      -> str("""{"hello": "world", "number": 42, "nested": {"key": true}}"""),
             "cborHex"    -> nil,
-            "cborBase64" -> nil
+            "cborBase64" -> nil,
           ),
-          layoutFn = layout
-        )
+          layoutFn = layout,
+        ),
       )
     }
 
@@ -76,16 +86,17 @@ object ExampleTapirServer:
       val dom = Json.decode(body.getBytes("UTF-8")).to[Dom.Element].value
       dom match
         case m: Dom.MapElem =>
-          m.toMap.collectFirst {
-            case (Dom.StringElem(k), Dom.StringElem(v)) if k == field => v
-          }.getOrElse("")
+          m.toMap
+            .collectFirst {
+              case (Dom.StringElem(k), Dom.StringElem(v)) if k == field => v
+            }
+            .getOrElse("")
         case _ => ""
     catch case _: Exception => ""
 
   /** Convert JSON input to CBOR and return an Inertia response. */
   private def convertJsonToCbor(headers: InertiaHeaders, jsonInput: String): InertiaResponse =
-    if jsonInput.isBlank then
-      renderConverter(headers, jsonInput, error = Some("Please enter JSON input."))
+    if jsonInput.isBlank then renderConverter(headers, jsonInput, error = Some("Please enter JSON input."))
     else
       try
         val dom       = Json.decode(jsonInput.getBytes("UTF-8")).to[Dom.Element].value
@@ -98,23 +109,26 @@ object ExampleTapirServer:
           renderConverter(headers, jsonInput, error = Some(s"Invalid JSON: ${e.getMessage}"))
 
   private def renderConverter(
-      headers: InertiaHeaders,
-      input: String,
-      cborHex: Option[String] = None,
-      cborBase64: Option[String] = None,
-      error: Option[String] = None
+    headers: InertiaHeaders,
+    input: String,
+    cborHex: Option[String] = None,
+    cborBase64: Option[String] = None,
+    error: Option[String] = None,
   ): InertiaResponse =
     // Errors are returned through Inertia's standard errors mechanism. The client's
     // useForm picks it up as errors.jsonInput. An empty message results in errors: {}.
     InertiaTapir.render(
-      headers, "/convert", "POST", "Converter",
+      headers,
+      "/convert",
+      "POST",
+      "Converter",
       Props.of(
         "input"      -> str(input),
         "cborHex"    -> cborHex.map(str).getOrElse(nil),
-        "cborBase64" -> cborBase64.map(str).getOrElse(nil)
+        "cborBase64" -> cborBase64.map(str).getOrElse(nil),
       ),
       errors = error.map(msg => Map("jsonInput" -> msg)).getOrElse(Map.empty),
-      layoutFn = layout
+      layoutFn = layout,
     )
 
   // ── Main ────────────────────────────────────────────────────────────────

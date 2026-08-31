@@ -2,25 +2,25 @@ package example
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
-import dev.capslock.inertia.core.{*, given}
-import dev.capslock.inertia.core.JsoniterProps.*
 import dev.capslock.inertia.cask.InertiaCask
+import dev.capslock.inertia.core.JsoniterProps.*
+import dev.capslock.inertia.core.{*, given}
 
 // ── Data types ───────────────────────────────────────────────────────────────
 
 case class User(id: Int, name: String, email: String)
 object User:
-  given JsonValueCodec[User] = JsonCodecMaker.make
+  given JsonValueCodec[User]       = JsonCodecMaker.make
   given JsonValueCodec[List[User]] = JsonCodecMaker.make
 
 case class Post(id: Int, title: String, body: String, authorId: Int)
 object Post:
-  given JsonValueCodec[Post] = JsonCodecMaker.make
+  given JsonValueCodec[Post]       = JsonCodecMaker.make
   given JsonValueCodec[List[Post]] = JsonCodecMaker.make
 
 case class Todo(id: Int, title: String, done: Boolean)
 object Todo:
-  given JsonValueCodec[Todo] = JsonCodecMaker.make
+  given JsonValueCodec[Todo]       = JsonCodecMaker.make
   given JsonValueCodec[List[Todo]] = JsonCodecMaker.make
 
 case class CreateTodoRequest(title: String)
@@ -41,25 +41,26 @@ object ExampleServer extends cask.MainRoutes:
 
   override def port: Int = 9000
 
-  // Sample data
-  private var users = List(
+  // Sample data (mutable in-memory store for demo purposes)
+  private var users = List( // scalafix:ok DisableSyntax.var
     User(1, "Alice", "alice@example.com"),
     User(2, "Bob", "bob@example.com"),
-    User(3, "Charlie", "charlie@example.com")
+    User(3, "Charlie", "charlie@example.com"),
   )
 
-  // In-memory TODO list
-  private var todos = List(
+  // In-memory TODO list (mutable for demo purposes)
+  private var todos = List( // scalafix:ok DisableSyntax.var
     Todo(1, "inertia-scala を試す", true),
     Todo(2, "Cask バインディングを書く", true),
-    Todo(3, "Example アプリを作る", false)
+    Todo(3, "Example アプリを作る", false),
   )
-  private var todoNextId = 4
+
+  private var todoNextId = 4 // scalafix:ok DisableSyntax.var
 
   private val posts = List(
     Post(1, "Hello Inertia", "This is the first post using inertia-scala!", 1),
     Post(2, "Scala 3 is great", "Pattern matching, given instances, opaque types...", 2),
-    Post(3, "Cask is simple", "A micro web framework for Scala.", 1)
+    Post(3, "Cask is simple", "A micro web framework for Scala.", 1),
   )
 
   // HTML layout referencing the Vite dev server
@@ -92,9 +93,9 @@ object ExampleServer extends cask.MainRoutes:
       component = "Home",
       props = Props.of(
         "greeting"  -> str("Welcome to inertia-scala!"),
-        "userCount" -> RawJson.raw(users.length.toString)
+        "userCount" -> RawJson.raw(users.length.toString),
       ),
-      layoutFn = layout
+      layoutFn = layout,
     )
 
   @cask.get("/users")
@@ -103,9 +104,9 @@ object ExampleServer extends cask.MainRoutes:
       req,
       component = "Users/Index",
       props = Props.of(
-        "users" -> prop(users)
+        "users" -> prop(users),
       ),
-      layoutFn = layout
+      layoutFn = layout,
     )
 
   @cask.get("/users/:id")
@@ -120,38 +121,33 @@ object ExampleServer extends cask.MainRoutes:
   private def renderUserShow(
     req: cask.Request,
     user: User,
-    errors: Map[String, String] = Map.empty
+    errors: Map[String, String] = Map.empty,
   ): cask.Response[String] =
     InertiaCask.render(
       req,
       component = "Users/Show",
       props = Props.of(
         "user"  -> prop(user),
-        "posts" -> prop(posts.filter(_.authorId == user.id))
+        "posts" -> prop(posts.filter(_.authorId == user.id)),
       ),
       errors = errors,
-      layoutFn = layout
+      layoutFn = layout,
     )
 
   // Profile update form. The client sends this with errorBag "updateProfile".
   @cask.post("/users/:id/profile")
   def updateProfile(req: cask.Request, id: Int) =
     users.find(_.id == id) match
-      case None => cask.Response("Not Found", statusCode = 404)
+      case None       => cask.Response("Not Found", statusCode = 404)
       case Some(user) =>
-        val body = readFromString[UpdateProfileRequest](req.text())
+        val body   = readFromString[UpdateProfileRequest](req.text())
         val errors = Map.newBuilder[String, String]
-        if body.name.trim.isEmpty then
-          errors += "name" -> "名前を入力してください"
-        if !body.email.contains("@") then
-          errors += "email" -> "メールアドレスの形式が正しくありません"
+        if body.name.trim.isEmpty then errors += "name"     -> "名前を入力してください"
+        if !body.email.contains("@") then errors += "email" -> "メールアドレスの形式が正しくありません"
         val errs = errors.result()
-        if errs.nonEmpty then
-          renderUserShow(req, user, errs)
+        if errs.nonEmpty then renderUserShow(req, user, errs)
         else
-          users = users.map(u =>
-            if u.id == id then u.copy(name = body.name.trim, email = body.email) else u
-          )
+          users = users.map(u => if u.id == id then u.copy(name = body.name.trim, email = body.email) else u)
           InertiaCask.redirect(req, s"/users/$id", 303)
 
   // Password change form. The client sends this with errorBag "updatePassword".
@@ -159,19 +155,15 @@ object ExampleServer extends cask.MainRoutes:
   @cask.post("/users/:id/password")
   def updatePassword(req: cask.Request, id: Int) =
     users.find(_.id == id) match
-      case None => cask.Response("Not Found", statusCode = 404)
+      case None       => cask.Response("Not Found", statusCode = 404)
       case Some(user) =>
-        val body = readFromString[UpdatePasswordRequest](req.text())
+        val body   = readFromString[UpdatePasswordRequest](req.text())
         val errors = Map.newBuilder[String, String]
-        if body.password.length < 8 then
-          errors += "password" -> "パスワードは8文字以上にしてください"
-        else if body.password != body.passwordConfirmation then
-          errors += "passwordConfirmation" -> "パスワードが一致しません"
+        if body.password.length < 8 then errors += "password" -> "パスワードは8文字以上にしてください"
+        else if body.password != body.passwordConfirmation then errors += "passwordConfirmation" -> "パスワードが一致しません"
         val errs = errors.result()
-        if errs.nonEmpty then
-          renderUserShow(req, user, errs)
-        else
-          InertiaCask.redirect(req, s"/users/$id", 303)
+        if errs.nonEmpty then renderUserShow(req, user, errs)
+        else InertiaCask.redirect(req, s"/users/$id", 303)
 
   @cask.get("/about")
   def about(req: cask.Request) =
@@ -179,9 +171,9 @@ object ExampleServer extends cask.MainRoutes:
       req,
       component = "About",
       props = Props.of(
-        "version" -> str("0.1.0-SNAPSHOT")
+        "version" -> str("0.1.0-SNAPSHOT"),
       ),
-      layoutFn = layout
+      layoutFn = layout,
     )
 
   // ── TODO routes ─────────────────────────────────────────────────────────────
@@ -192,9 +184,9 @@ object ExampleServer extends cask.MainRoutes:
       req,
       component = "Todos/Index",
       props = Props.of(
-        "todos" -> prop(todos)
+        "todos" -> prop(todos),
       ),
-      layoutFn = layout
+      layoutFn = layout,
     )
 
   // @cask.postJson re-serializes the return value's body as JSON, so here—where
@@ -213,7 +205,7 @@ object ExampleServer extends cask.MainRoutes:
         component = "Todos/Index",
         props = Props.of("todos" -> prop(todos)),
         errors = Map("title" -> "タイトルを入力してください"),
-        layoutFn = layout
+        layoutFn = layout,
       )
     else
       val todo = Todo(todoNextId, title.trim, done = false)

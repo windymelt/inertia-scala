@@ -37,7 +37,7 @@ given JsonObject[Props] with
   def merge(base: Props, overlay: Props): Props = base ++ overlay
 
   def filterKeys(p: Props, only: Set[String], except: Set[String]): Props =
-    if only.nonEmpty        then p.view.filterKeys(only.contains).toMap
+    if only.nonEmpty then p.view.filterKeys(only.contains).toMap
     else if except.nonEmpty then p.view.filterKeys(!except.contains(_)).toMap
     else p
 
@@ -45,7 +45,7 @@ given JsonObject[Props] with
   // The value is kept as a pre-serialized RawJson.
   def errors(messages: Map[String, String], errorBag: Option[String]): Props =
     def quote(s: String): String = writeToString(s)(using stringCodec)
-    val inner =
+    val inner                    =
       if messages.isEmpty then "{}"
       else messages.map((k, v) => s"${quote(k)}:${quote(v)}").mkString("{", ",", "}")
     val errorsJson =
@@ -60,13 +60,15 @@ given JsonObject[Props] with
     if p.isEmpty then "{}"
     else
       val sb = new java.lang.StringBuilder("{")
-      var first = true
+      // Imperative loop over the map for allocation-free concatenation.
+      var first = true // scalafix:ok DisableSyntax.var
       p.foreach { (k, v) =>
         if !first then sb.append(',')
         sb.append('"')
         // Escape keys (borrowing jsoniter's writeToString)
         val escaped = writeToString(k)(using stringCodec)
-          .drop(1).dropRight(1)  // Strip surrounding quotes to get inner content
+          .drop(1)
+          .dropRight(1) // Strip surrounding quotes to get inner content
         sb.append(escaped)
         sb.append('"').append(':')
         sb.append(new String(v, "UTF-8"))
@@ -79,8 +81,9 @@ given JsonObject[Props] with
 given stringCodec: JsonValueCodec[String] =
   new JsonValueCodec[String]:
     def decodeValue(in: JsonReader, default: String): String = in.readString(default)
-    def encodeValue(x: String, out: JsonWriter): Unit = out.writeVal(x)
-    def nullValue: String = null
+    def encodeValue(x: String, out: JsonWriter): Unit        = out.writeVal(x)
+    // The JsonValueCodec contract requires a null sentinel here.
+    def nullValue: String = null // scalafix:ok DisableSyntax.null
 
 // ── Convenience helpers ──────────────────────────────────────────────────────
 //
