@@ -1,5 +1,7 @@
 # inertia-scala
 
+[![Maven Central](https://maven-badges.sml.io/maven-central/dev.capslock/inertia-core_3/badge.svg)](https://maven-badges.sml.io/maven-central/dev.capslock/inertia-core_3/)
+
 *Read this in [日本語](./README.ja.md).*
 
 ```scala
@@ -43,14 +45,11 @@ The core is decoupled from any specific JSON library or HTTP framework: both are
 
 ```scala
 libraryDependencies ++= Seq(
-  "dev.capslock" %% "inertia-core"  % "<version>",
-  "dev.capslock" %% "inertia-cask"  % "<version>",  // Cask integration
-  "dev.capslock" %% "inertia-tapir" % "<version>"   // Tapir integration
+  "dev.capslock" %% "inertia-core"  % "0.1.0",
+  "dev.capslock" %% "inertia-cask"  % "0.1.0",  // Cask integration
+  "dev.capslock" %% "inertia-tapir" % "0.1.0"   // Tapir integration
 )
 ```
-
-> [!NOTE]
-> The artifacts are not published to Maven Central yet. Until the first release, clone this repository and run `sbt publishLocal`.
 
 The framework dependencies (`cask`, `tapir-core`) are in the `Provided` scope, so add the one you use to your own dependencies. `inertia-core` and `inertia-tapir` are cross-built for JVM / Scala.js / Scala Native; `inertia-cask` is JVM-only (use `%%%` in a Scala.js / Scala Native project).
 
