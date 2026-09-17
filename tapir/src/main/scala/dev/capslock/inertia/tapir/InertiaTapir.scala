@@ -139,11 +139,14 @@ object InertiaTapir:
           Header("Content-Type", "text/html; charset=utf-8"),
         ),
       )
-    case InertiaResult.Conflict(location) =>
+    case InertiaResult.Conflict(location, version) =>
       InertiaResponse(
         statusCode = StatusCode.Conflict,
         body = "",
-        headers = List(Header("X-Inertia-Location", location)),
+        headers = List(
+          Header(InertiaCore.HdrLocation, location),
+          Header(InertiaCore.HdrVersionResponse, version),
+        ),
       )
     case InertiaResult.Redirect(location, status) =>
       InertiaResponse(

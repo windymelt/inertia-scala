@@ -104,7 +104,7 @@ InertiaCask.redirect(req, "/todos")
 
 ### Asset versioning
 
-Pass your current asset version to `render`; when a GET request carries a stale `X-Inertia-Version`, the core responds with `409 Conflict` + `X-Inertia-Location` and the client performs a full reload:
+Pass your current asset version to `render`; when a GET request carries a stale `X-Inertia-Version`, the core responds with `409 Conflict` carrying `X-Inertia-Location` and the current `X-Inertia-Version`, and the client performs a full reload:
 
 ```scala
 InertiaCask.render(req, "Home", props, version = assetVersion)

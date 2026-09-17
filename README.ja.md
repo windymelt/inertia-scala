@@ -104,7 +104,7 @@ InertiaCask.redirect(req, "/todos")
 
 ### アセットのバージョン管理
 
-現在のアセットバージョンを `render` に渡します。GET リクエストの `X-Inertia-Version` が古い場合、コアが `409 Conflict` + `X-Inertia-Location` を返し、クライアントがページ全体をリロードします。
+現在のアセットバージョンを `render` に渡します。GET リクエストの `X-Inertia-Version` が古い場合、コアが `409 Conflict` を `X-Inertia-Location` と現在の `X-Inertia-Version` 付きで返し、クライアントがページ全体をリロードします。
 
 ```scala
 InertiaCask.render(req, "Home", props, version = assetVersion)

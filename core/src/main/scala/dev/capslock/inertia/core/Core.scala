@@ -32,10 +32,14 @@ trait InertiaRequest:
 
 sealed trait InertiaResult[+P]
 object InertiaResult:
-  case class InertiaJson[P](page: InertiaPage[P])    extends InertiaResult[P]
-  case class InertiaHtml[P](page: InertiaPage[P])    extends InertiaResult[P]
-  case class Conflict(redirectTo: String)            extends InertiaResult[Nothing]
-  case class Redirect(location: String, status: Int) extends InertiaResult[Nothing]
+  case class InertiaJson[P](page: InertiaPage[P]) extends InertiaResult[P]
+  case class InertiaHtml[P](page: InertiaPage[P]) extends InertiaResult[P]
+
+  /** Asset-version mismatch. The response carries both X-Inertia-Location (redirectTo) and X-Inertia-Version (the
+    * server's current version), as the protocol requires.
+    */
+  case class Conflict(redirectTo: String, version: String) extends InertiaResult[Nothing]
+  case class Redirect(location: String, status: Int)       extends InertiaResult[Nothing]
 
 // ── Redirect plan ────────────────────────────────────────────────────────────
 // The shape of a redirect response. Framework integrations convert this into an actual response.
@@ -65,8 +69,9 @@ object InertiaCore:
   val HdrPartialExcept = "x-inertia-partial-except"
   val HdrErrorBag      = "x-inertia-error-bag"
   // Response-side headers
-  val HdrLocation = "X-Inertia-Location"
-  val HdrRedirect = "X-Inertia-Redirect"
+  val HdrLocation        = "X-Inertia-Location"
+  val HdrRedirect        = "X-Inertia-Redirect"
+  val HdrVersionResponse = "X-Inertia-Version"
 
   def render[P](
     req: InertiaRequest,
@@ -81,7 +86,7 @@ object InertiaCore:
     // For non-GET requests (form submissions, etc.) an asset version mismatch does not trigger a redirect.
     if req.isInertia && req.method.toUpperCase == "GET"
       && version.nonEmpty && req.clientVersion.exists(_ != version)
-    then InertiaResult.Conflict(req.url)
+    then InertiaResult.Conflict(req.url, version)
     else
       val effectiveSharedProps = sharedProps.getOrElse(J.empty)
 

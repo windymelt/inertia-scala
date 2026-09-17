@@ -85,7 +85,7 @@ class InertiaCoreSuite extends munit.FunSuite:
   test("GET でバージョン不一致なら 409 Conflict") {
     val req    = FakeRequest(isInertia = true, method = "GET", clientVersion = Some("old"))
     val result = InertiaCore.render(req, "Home", Props.empty, version = "new")
-    assertEquals(result, InertiaResult.Conflict("/test"))
+    assertEquals(result, InertiaResult.Conflict("/test", "new"))
   }
 
   test("非 GET ではバージョン不一致でも Conflict にならない") {

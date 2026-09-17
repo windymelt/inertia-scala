@@ -81,6 +81,7 @@ class InertiaTapirSuite extends munit.FunSuite:
     )
     assertEquals(resp.statusCode, StatusCode.Conflict)
     assert(resp.headers.exists(h => h.name == "X-Inertia-Location" && h.value == "/test"))
+    assert(resp.headers.exists(h => h.name == "X-Inertia-Version" && h.value == "new"))
   }
 
   test("redirect normalizes POST 302 to 303") {
