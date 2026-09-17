@@ -85,7 +85,7 @@ class InertiaCoreSuite extends munit.FunSuite:
   test("GET でバージョン不一致なら 409 Conflict") {
     val req    = FakeRequest(isInertia = true, method = "GET", clientVersion = Some("old"))
     val result = InertiaCore.render(req, "Home", Props.empty, version = "new")
-    assertEquals(result, InertiaResult.Conflict("/test"))
+    assertEquals(result, InertiaResult.Conflict("/test", "new"))
   }
 
   test("非 GET ではバージョン不一致でも Conflict にならない") {
@@ -124,4 +124,30 @@ class InertiaCoreSuite extends munit.FunSuite:
       InertiaCore.planRedirect("GET", "/home#section", 302, isInertia = false),
       RedirectPlan.Location("/home#section", 302),
     )
+  }
+
+  // ── Initial HTML (Inertia v3) ──────────────────────────────────────────
+
+  test("pageToHtml は JSON script 要素とマウント用 div を出力する") {
+    val page = InertiaPage("Home", Props.of("greeting" -> str("hi")), "/test", "v1")
+    val html = InertiaCore.pageToHtml(page)
+    assert(html.contains("""<script data-page="app" type="application/json">"""), html)
+    assert(html.contains("""<div id="app"></div>"""), html)
+    // The client parses the script body with JSON.parse, so the JSON must not be HTML-entity encoded
+    assert(!html.contains("&quot;"), html)
+  }
+
+  test("pageToHtml はスラッシュを \\/ にエスケープする（URL・props とも）") {
+    val page = InertiaPage("Home", Props.of("html" -> str("</script><b>x</b>")), "/events/80", "v1")
+    val html = InertiaCore.pageToHtml(page)
+    assert(html.contains("""\/events\/80"""), html)
+    // A </script> sequence inside prop data must not close the script element early
+    assert(html.contains("""<\/script><b>x<\/b>"""), html)
+  }
+
+  test("escapeJsonForScript はエスケープ済みのスラッシュを二重にエスケープしない") {
+    assertEquals(InertiaCore.escapeJsonForScript("""{"a":"x/y"}"""), """{"a":"x\/y"}""")
+    assertEquals(InertiaCore.escapeJsonForScript("""{"a":"x\/y"}"""), """{"a":"x\/y"}""")
+    // literal backslash (\\) followed by a slash: the slash itself still needs escaping
+    assertEquals(InertiaCore.escapeJsonForScript("""{"a":"x\\/y"}"""), """{"a":"x\\\/y"}""")
   }

@@ -65,11 +65,14 @@ object InertiaCask:
         headers = Seq("Content-Type" -> "text/html; charset=utf-8"),
       )
 
-    case InertiaResult.Conflict(location) =>
+    case InertiaResult.Conflict(location, version) =>
       cask.Response(
         data = "",
         statusCode = 409,
-        headers = Seq("X-Inertia-Location" -> location),
+        headers = Seq(
+          InertiaCore.HdrLocation        -> location,
+          InertiaCore.HdrVersionResponse -> version,
+        ),
       )
 
     case InertiaResult.Redirect(location, status) =>

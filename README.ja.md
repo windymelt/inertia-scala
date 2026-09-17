@@ -54,7 +54,7 @@ libraryDependencies ++= Seq(
 
 フレームワーク依存（`cask`、`tapir-core`）は `Provided` スコープなので、使うフレームワークは自分の依存に追加してください。`inertia-core` と `inertia-tapir` は JVM / Scala.js / Scala Native にクロスビルドされ、`inertia-cask` は JVM 専用です（Scala.js / Scala Native プロジェクトでは `%%%` を使ってください）。
 
-フロントエンド側に Scala 固有の要素はありません。標準の Inertia.js クライアントをセットアップし、HTML レイアウト（後述の `layoutFn`）からフロントエンドのバンドルを読み込みます。初回リクエストにはサーバーが `data-page` ペイロード入りの HTML を返し、以降の遷移には JSON を返します。[プロトコル](https://inertiajs.com/the-protocol)どおりの挙動です。
+フロントエンド側に Scala 固有の要素はありません。標準の Inertia.js クライアントをセットアップし、HTML レイアウト（後述の `layoutFn`）からフロントエンドのバンドルを読み込みます。初回リクエストにはサーバーがページオブジェクトを JSON script 要素として埋め込んだ HTML（Inertia v3 形式）を返し、以降の遷移には JSON を返します。[プロトコル](https://inertiajs.com/the-protocol)どおりの挙動です。
 
 実行可能なサンプルは `examples/` にあります。Cask サーバー（port 9000）と Tapir サーバー（port 9001）で、それぞれ Vite + React のフロントエンドと組み合わせています。
 
@@ -104,7 +104,7 @@ InertiaCask.redirect(req, "/todos")
 
 ### アセットのバージョン管理
 
-現在のアセットバージョンを `render` に渡します。GET リクエストの `X-Inertia-Version` が古い場合、コアが `409 Conflict` + `X-Inertia-Location` を返し、クライアントがページ全体をリロードします。
+現在のアセットバージョンを `render` に渡します。GET リクエストの `X-Inertia-Version` が古い場合、コアが `409 Conflict` を `X-Inertia-Location` と現在の `X-Inertia-Version` 付きで返し、クライアントがページ全体をリロードします。
 
 ```scala
 InertiaCask.render(req, "Home", props, version = assetVersion)
@@ -112,7 +112,7 @@ InertiaCask.render(req, "Home", props, version = assetVersion)
 
 ### HTML レイアウトのカスタマイズ
 
-`layoutFn` は `<div id="app" data-page="...">` のマークアップを受け取り、完全な HTML ドキュメントに包みます。フロントエンドのバンドルはここで読み込みます。
+`layoutFn` は `<script data-page="app" type="application/json">` のページデータ要素と `<div id="app">` のマウント要素を受け取り、完全な HTML ドキュメントに包みます。フロントエンドのバンドルはここで読み込みます。
 
 ```scala
 InertiaCask.render(req, "Home", props, layoutFn = myLayout)

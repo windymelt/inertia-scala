@@ -51,7 +51,8 @@ class InertiaTapirSuite extends munit.FunSuite:
       Map("key" -> "value"),
     )
     assertEquals(resp.statusCode, StatusCode.Ok)
-    assert(resp.body.contains("data-page="))
+    assert(resp.body.contains("""<script data-page="app" type="application/json">"""))
+    assert(resp.body.contains("""<div id="app"></div>"""))
     assert(resp.headers.exists(h => h.name == "Content-Type" && h.value.contains("text/html")))
   }
 
@@ -80,6 +81,7 @@ class InertiaTapirSuite extends munit.FunSuite:
     )
     assertEquals(resp.statusCode, StatusCode.Conflict)
     assert(resp.headers.exists(h => h.name == "X-Inertia-Location" && h.value == "/test"))
+    assert(resp.headers.exists(h => h.name == "X-Inertia-Version" && h.value == "new"))
   }
 
   test("redirect normalizes POST 302 to 303") {

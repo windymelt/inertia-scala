@@ -32,10 +32,14 @@ trait InertiaRequest:
 
 sealed trait InertiaResult[+P]
 object InertiaResult:
-  case class InertiaJson[P](page: InertiaPage[P])    extends InertiaResult[P]
-  case class InertiaHtml[P](page: InertiaPage[P])    extends InertiaResult[P]
-  case class Conflict(redirectTo: String)            extends InertiaResult[Nothing]
-  case class Redirect(location: String, status: Int) extends InertiaResult[Nothing]
+  case class InertiaJson[P](page: InertiaPage[P]) extends InertiaResult[P]
+  case class InertiaHtml[P](page: InertiaPage[P]) extends InertiaResult[P]
+
+  /** Asset-version mismatch. The response carries both X-Inertia-Location (redirectTo) and X-Inertia-Version (the
+    * server's current version), as the protocol requires.
+    */
+  case class Conflict(redirectTo: String, version: String) extends InertiaResult[Nothing]
+  case class Redirect(location: String, status: Int)       extends InertiaResult[Nothing]
 
 // ── Redirect plan ────────────────────────────────────────────────────────────
 // The shape of a redirect response. Framework integrations convert this into an actual response.
@@ -65,8 +69,9 @@ object InertiaCore:
   val HdrPartialExcept = "x-inertia-partial-except"
   val HdrErrorBag      = "x-inertia-error-bag"
   // Response-side headers
-  val HdrLocation = "X-Inertia-Location"
-  val HdrRedirect = "X-Inertia-Redirect"
+  val HdrLocation        = "X-Inertia-Location"
+  val HdrRedirect        = "X-Inertia-Redirect"
+  val HdrVersionResponse = "X-Inertia-Version"
 
   def render[P](
     req: InertiaRequest,
@@ -81,7 +86,7 @@ object InertiaCore:
     // For non-GET requests (form submissions, etc.) an asset version mismatch does not trigger a redirect.
     if req.isInertia && req.method.toUpperCase == "GET"
       && version.nonEmpty && req.clientVersion.exists(_ != version)
-    then InertiaResult.Conflict(req.url)
+    then InertiaResult.Conflict(req.url, version)
     else
       val effectiveSharedProps = sharedProps.getOrElse(J.empty)
 
@@ -108,12 +113,22 @@ object InertiaCore:
         page.url,
       )},"version":${quoteStr(page.version)}}"""
 
+  /** Render the initial-load HTML fragment.
+    *
+    * Since Inertia v3, the page object is embedded as a JSON script element (`<script data-page="app"
+    * type="application/json">`) next to the mount element, instead of the legacy `data-page` attribute. The client
+    * locates it via `script[data-page="app"][type="application/json"]` and parses its text content with JSON.parse, so
+    * the JSON must not be HTML-entity encoded.
+    */
   def pageToHtml[P: JsonObject](
     page: InertiaPage[P],
     layoutFn: String => String = defaultLayout,
   ): String =
-    val encoded = escapeAttr(pageToJson(page))
-    layoutFn(s"""<div id="app" data-page="$encoded"></div>""")
+    val encoded = escapeJsonForScript(pageToJson(page))
+    layoutFn(
+      s"""<script data-page="app" type="application/json">$encoded</script>
+         |<div id="app"></div>""".stripMargin,
+    )
 
   /** Whether the redirect destination URL contains a fragment (#). */
   def redirectHasFragment(location: String): Boolean = location.contains('#')
@@ -151,5 +166,16 @@ object InertiaCore:
   private def quoteStr(s: String): String =
     "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
-  private def escapeAttr(s: String): String =
-    s.replace("&", "&amp;").replace("\"", "&quot;")
+  /** Escape every unescaped forward slash as `\/` so that a `</script>` sequence inside prop data cannot close the
+    * script element early, as the protocol requires. `\/` is a valid JSON string escape, so the parsed value is
+    * unchanged. A slash already escaped (preceded by an odd number of backslashes) is left as is to avoid corrupting
+    * the escape sequence.
+    */
+  private[core] def escapeJsonForScript(json: String): String =
+    val (sb, _) = json.foldLeft((new StringBuilder(json.length + 16), 0)) { case ((sb, backslashes), c) =>
+      c match
+        case '\\' => (sb.append(c), backslashes + 1)
+        case '/' if backslashes % 2 == 0 => (sb.append("\\/"), 0)
+        case _ => (sb.append(c), 0)
+    }
+    sb.toString
