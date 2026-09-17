@@ -46,9 +46,9 @@ The core is decoupled from any specific JSON library or HTTP framework: both are
 
 ```scala
 libraryDependencies ++= Seq(
-  "dev.capslock" %% "inertia-core"  % "0.1.0",
-  "dev.capslock" %% "inertia-cask"  % "0.1.0",  // Cask integration
-  "dev.capslock" %% "inertia-tapir" % "0.1.0"   // Tapir integration
+  "dev.capslock" %% "inertia-core"  % "0.2.0",
+  "dev.capslock" %% "inertia-cask"  % "0.2.0",  // Cask integration
+  "dev.capslock" %% "inertia-tapir" % "0.2.0"   // Tapir integration
 )
 ```
 
