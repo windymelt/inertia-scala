@@ -46,9 +46,9 @@ inertia-scala は [Inertia.js](https://inertiajs.com/) プロトコルの Scala 
 
 ```scala
 libraryDependencies ++= Seq(
-  "dev.capslock" %% "inertia-core"  % "0.1.0",
-  "dev.capslock" %% "inertia-cask"  % "0.1.0",  // Cask 統合
-  "dev.capslock" %% "inertia-tapir" % "0.1.0"   // Tapir 統合
+  "dev.capslock" %% "inertia-core"  % "0.2.0",
+  "dev.capslock" %% "inertia-cask"  % "0.2.0",  // Cask 統合
+  "dev.capslock" %% "inertia-tapir" % "0.2.0"   // Tapir 統合
 )
 ```
 
