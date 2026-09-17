@@ -108,12 +108,22 @@ object InertiaCore:
         page.url,
       )},"version":${quoteStr(page.version)}}"""
 
+  /** Render the initial-load HTML fragment.
+    *
+    * Since Inertia v3, the page object is embedded as a JSON script element (`<script data-page="app"
+    * type="application/json">`) next to the mount element, instead of the legacy `data-page` attribute. The client
+    * locates it via `script[data-page="app"][type="application/json"]` and parses its text content with JSON.parse, so
+    * the JSON must not be HTML-entity encoded.
+    */
   def pageToHtml[P: JsonObject](
     page: InertiaPage[P],
     layoutFn: String => String = defaultLayout,
   ): String =
-    val encoded = escapeAttr(pageToJson(page))
-    layoutFn(s"""<div id="app" data-page="$encoded"></div>""")
+    val encoded = escapeJsonForScript(pageToJson(page))
+    layoutFn(
+      s"""<script data-page="app" type="application/json">$encoded</script>
+         |<div id="app"></div>""".stripMargin,
+    )
 
   /** Whether the redirect destination URL contains a fragment (#). */
   def redirectHasFragment(location: String): Boolean = location.contains('#')
@@ -151,5 +161,16 @@ object InertiaCore:
   private def quoteStr(s: String): String =
     "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
-  private def escapeAttr(s: String): String =
-    s.replace("&", "&amp;").replace("\"", "&quot;")
+  /** Escape every unescaped forward slash as `\/` so that a `</script>` sequence inside prop data cannot close the
+    * script element early, as the protocol requires. `\/` is a valid JSON string escape, so the parsed value is
+    * unchanged. A slash already escaped (preceded by an odd number of backslashes) is left as is to avoid corrupting
+    * the escape sequence.
+    */
+  private[core] def escapeJsonForScript(json: String): String =
+    val (sb, _) = json.foldLeft((new StringBuilder(json.length + 16), 0)) { case ((sb, backslashes), c) =>
+      c match
+        case '\\' => (sb.append(c), backslashes + 1)
+        case '/' if backslashes % 2 == 0 => (sb.append("\\/"), 0)
+        case _ => (sb.append(c), 0)
+    }
+    sb.toString

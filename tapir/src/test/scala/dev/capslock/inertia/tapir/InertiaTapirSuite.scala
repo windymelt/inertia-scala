@@ -51,7 +51,8 @@ class InertiaTapirSuite extends munit.FunSuite:
       Map("key" -> "value"),
     )
     assertEquals(resp.statusCode, StatusCode.Ok)
-    assert(resp.body.contains("data-page="))
+    assert(resp.body.contains("""<script data-page="app" type="application/json">"""))
+    assert(resp.body.contains("""<div id="app"></div>"""))
     assert(resp.headers.exists(h => h.name == "Content-Type" && h.value.contains("text/html")))
   }
 

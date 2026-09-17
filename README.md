@@ -54,7 +54,7 @@ libraryDependencies ++= Seq(
 
 The framework dependencies (`cask`, `tapir-core`) are in the `Provided` scope, so add the one you use to your own dependencies. `inertia-core` and `inertia-tapir` are cross-built for JVM / Scala.js / Scala Native; `inertia-cask` is JVM-only (use `%%%` in a Scala.js / Scala Native project).
 
-On the frontend, nothing is Scala-specific: set up a standard Inertia.js client and point the HTML layout (see `layoutFn` below) at your frontend bundle. On the first request the server responds with HTML containing the `data-page` payload; subsequent navigation gets JSON, exactly as the [protocol](https://inertiajs.com/the-protocol) specifies.
+On the frontend, nothing is Scala-specific: set up a standard Inertia.js client and point the HTML layout (see `layoutFn` below) at your frontend bundle. On the first request the server responds with HTML that embeds the page object as a JSON script element (the Inertia v3 format); subsequent navigation gets JSON, exactly as the [protocol](https://inertiajs.com/the-protocol) specifies.
 
 Runnable examples live in `examples/` — a Cask server (port 9000) and a Tapir server (port 9001), each paired with a Vite + React frontend:
 
@@ -112,7 +112,7 @@ InertiaCask.render(req, "Home", props, version = assetVersion)
 
 ### Custom HTML layout
 
-`layoutFn` receives the `<div id="app" data-page="...">` markup and wraps it in your full HTML document — this is where you load your frontend bundle:
+`layoutFn` receives the `<script data-page="app" type="application/json">` page-data element followed by the `<div id="app">` mount element, and wraps them in your full HTML document — this is where you load your frontend bundle:
 
 ```scala
 InertiaCask.render(req, "Home", props, layoutFn = myLayout)
