@@ -22,6 +22,14 @@ inThisBuild(
   )
 )
 
+// Workaround for https://github.com/scoverage/sbt-scoverage/issues/696 (fixed upstream,
+// unreleased as of sbt-scoverage 2.4.4). sbt 2 caches compile and restores only the class
+// directory on a cache hit, so the scoverage data must live inside it. Remove this once the
+// plugin release that defaults coverageDataDir to Compile / classDirectory is adopted.
+lazy val coverageSettings = Seq(
+  coverageDataDir := (Compile / classDirectory).value
+)
+
 lazy val root = (project in file("."))
   .aggregate(
     (core.projectRefs
@@ -30,12 +38,14 @@ lazy val root = (project in file("."))
       ++ `example-cask`.projectRefs
       ++ `example-tapir`.projectRefs)*,
   )
+  .settings(coverageSettings)
   .settings(
     name := "inertia-scala",
     publish / skip := true,
   )
 
 lazy val core = (projectMatrix in file("core"))
+  .settings(coverageSettings)
   .settings(
     name := "inertia-core",
     libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.38.9",
@@ -57,6 +67,7 @@ lazy val core = (projectMatrix in file("core"))
   )
 
 lazy val `inertia-cask` = (projectMatrix in file("cask"))
+  .settings(coverageSettings)
   .dependsOn(core)
   .settings(
     name := "inertia-cask",
@@ -68,6 +79,7 @@ lazy val `inertia-cask` = (projectMatrix in file("cask"))
   )
 
 lazy val `inertia-tapir` = (projectMatrix in file("tapir"))
+  .settings(coverageSettings)
   .dependsOn(core)
   .settings(
     name := "inertia-tapir",
@@ -92,6 +104,7 @@ lazy val `inertia-tapir` = (projectMatrix in file("tapir"))
   )
 
 lazy val `example-cask` = (projectMatrix in file("examples/cask"))
+  .settings(coverageSettings)
   .dependsOn(`inertia-cask`)
   .settings(
     name := "inertia-example-cask",
@@ -105,6 +118,7 @@ lazy val `example-cask` = (projectMatrix in file("examples/cask"))
   )
 
 lazy val `example-tapir` = (projectMatrix in file("examples/tapir"))
+  .settings(coverageSettings)
   .dependsOn(`inertia-tapir`)
   .settings(
     name := "inertia-example-tapir",
