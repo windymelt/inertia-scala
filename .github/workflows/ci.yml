@@ -42,8 +42,10 @@ jobs:
           # examples compile. cask has no tests, but testOnly * still compiles it.
           # sbt 2 joins CLI args into a single command line, so the tasks are
           # separated with semicolons instead of being passed as separate args.
+          # Coverage is measured on the JVM axis only. The examples are compiled
+          # before `coverage` so that they are not instrumented.
           - platform: jvm
-            tasks: 'core/testOnly *; inertia-cask/testOnly *; inertia-tapir/testOnly *; example-cask/compile; example-tapir/compile'
+            tasks: 'example-cask/compile; example-tapir/compile; coverage; core/testOnly *; inertia-cask/testOnly *; inertia-tapir/testOnly *; coverageReport; coverageAggregate'
           - platform: js
             tasks: 'coreJS/testOnly *; inertia-tapirJS/testOnly *'
           - platform: native
@@ -67,6 +69,37 @@ jobs:
 
       - name: Test
         run: sbt '${{ matrix.tasks }}'
+
+      # The aggregate report lives under the root project's class directory
+      # (see coverageSettings in build.sbt). The Scala version in the path is
+      # sbt's own, so it is matched with a glob.
+      - name: Write coverage summary
+        if: matrix.platform == 'jvm'
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import glob
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse(glob.glob("target/out/jvm/*/inertia-scala/classes/scoverage-report/scoverage.xml")[0]).getroot()
+          print("## Coverage")
+          print()
+          print(f"Statement: **{root.get('statement-rate')}%** / Branch: **{root.get('branch-rate')}%**")
+          print()
+          print("| Package | Statements | Invoked | Statement rate |")
+          print("|---|---:|---:|---:|")
+          for p in root.iter("package"):
+              print(f"| `{p.get('name')}` | {p.get('statement-count')} | {p.get('statements-invoked')} | {p.get('statement-rate')}% |")
+          EOF
+
+      - name: Upload coverage report
+        if: matrix.platform == 'jvm'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report
+          path: |
+            target/out/jvm/*/inertia-scala/classes/scoverage-report/
+            target/out/jvm/*/inertia-scala/classes/coverage-report/
+          if-no-files-found: error
 
   ci-passed:
     needs: [lint, test]
