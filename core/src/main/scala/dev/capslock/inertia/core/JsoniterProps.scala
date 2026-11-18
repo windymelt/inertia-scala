@@ -12,6 +12,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 
 opaque type RawJson = Array[Byte]
 
+
 object RawJson:
   /** Serialize any type A as a JSON field value */
   def of[A: JsonValueCodec](a: A): RawJson = writeToArray(a)
@@ -21,6 +22,7 @@ object RawJson:
 
 // Props = field name -> pre-serialized JSON value
 type Props = Map[String, RawJson]
+
 
 object Props:
   val empty: Props = Map.empty
@@ -45,13 +47,12 @@ given JsonObject[Props] with
   // The value is kept as a pre-serialized RawJson.
   def errors(messages: Map[String, String], errorBag: Option[String]): Props =
     def quote(s: String): String = writeToString(s)(using stringCodec)
-    val inner                    =
+    val inner =
       if messages.isEmpty then "{}"
       else messages.map((k, v) => s"${quote(k)}:${quote(v)}").mkString("{", ",", "}")
-    val errorsJson =
-      errorBag match
-        case Some(bag) if messages.nonEmpty => s"{${quote(bag)}:$inner}"
-        case _                              => inner
+    val errorsJson = errorBag match
+      case Some(bag) if messages.nonEmpty => s"{${quote(bag)}:$inner}"
+      case _                              => inner
     Map("errors" -> RawJson.raw(errorsJson))
 
   // Map[String, Array[Byte]] -> {"key1":...,"key2":...} JSON string
@@ -62,28 +63,27 @@ given JsonObject[Props] with
       val sb = new java.lang.StringBuilder("{")
       // Imperative loop over the map for allocation-free concatenation.
       var first = true // scalafix:ok DisableSyntax.var
-      p.foreach { (k, v) =>
+      p.foreach: (k, v) =>
         if !first then sb.append(',')
         sb.append('"')
         // Escape keys (borrowing jsoniter's writeToString)
-        val escaped = writeToString(k)(using stringCodec)
-          .drop(1)
-          .dropRight(1) // Strip surrounding quotes to get inner content
+        val escaped = writeToString(k)(using stringCodec).drop(1).dropRight(1) // Strip surrounding quotes to get inner content
         sb.append(escaped)
         sb.append('"').append(':')
         sb.append(new String(v, "UTF-8"))
         first = false
-      }
       sb.append('}').toString
+end given
 
 // ── String codec (not provided by jsoniter-scala out of the box) ─────────────
 
 given stringCodec: JsonValueCodec[String] =
   new JsonValueCodec[String]:
     def decodeValue(in: JsonReader, default: String): String = in.readString(default)
-    def encodeValue(x: String, out: JsonWriter): Unit        = out.writeVal(x)
+    def encodeValue(x: String, out: JsonWriter): Unit = out.writeVal(x)
     // The JsonValueCodec contract requires a null sentinel here.
     def nullValue: String = null // scalafix:ok DisableSyntax.null
+
 
 // ── Convenience helpers ──────────────────────────────────────────────────────
 //

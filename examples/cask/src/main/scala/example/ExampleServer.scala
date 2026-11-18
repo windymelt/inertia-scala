@@ -4,36 +4,49 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 import dev.capslock.inertia.cask.InertiaCask
 import dev.capslock.inertia.core.JsoniterProps.*
-import dev.capslock.inertia.core.{*, given}
+import dev.capslock.inertia.core.{ *, given }
+
 
 // ── Data types ───────────────────────────────────────────────────────────────
 
 case class User(id: Int, name: String, email: String)
+
 object User:
-  given JsonValueCodec[User]       = JsonCodecMaker.make
+  given JsonValueCodec[User] = JsonCodecMaker.make
   given JsonValueCodec[List[User]] = JsonCodecMaker.make
 
+
 case class Post(id: Int, title: String, body: String, authorId: Int)
+
 object Post:
-  given JsonValueCodec[Post]       = JsonCodecMaker.make
+  given JsonValueCodec[Post] = JsonCodecMaker.make
   given JsonValueCodec[List[Post]] = JsonCodecMaker.make
 
+
 case class Todo(id: Int, title: String, done: Boolean)
+
 object Todo:
-  given JsonValueCodec[Todo]       = JsonCodecMaker.make
+  given JsonValueCodec[Todo] = JsonCodecMaker.make
   given JsonValueCodec[List[Todo]] = JsonCodecMaker.make
 
+
 case class CreateTodoRequest(title: String)
+
 object CreateTodoRequest:
   given JsonValueCodec[CreateTodoRequest] = JsonCodecMaker.make
 
+
 case class UpdateProfileRequest(name: String, email: String)
+
 object UpdateProfileRequest:
   given JsonValueCodec[UpdateProfileRequest] = JsonCodecMaker.make
 
+
 case class UpdatePasswordRequest(password: String, passwordConfirmation: String)
+
 object UpdatePasswordRequest:
   given JsonValueCodec[UpdatePasswordRequest] = JsonCodecMaker.make
+
 
 // ── Server ───────────────────────────────────────────────────────────────────
 
@@ -87,67 +100,67 @@ object ExampleServer extends cask.MainRoutes:
         |</html>""".stripMargin
 
   @cask.get("/")
-  def index(req: cask.Request) =
-    InertiaCask.render(
-      req,
-      component = "Home",
-      props = Props.of(
-        "greeting"  -> str("Welcome to inertia-scala!"),
-        "userCount" -> RawJson.raw(users.length.toString),
-      ),
-      layoutFn = layout,
-    )
+  def index(req: cask.Request) = InertiaCask.render(
+    req,
+    component = "Home",
+    props = Props.of("greeting" -> str("Welcome to inertia-scala!"), "userCount" -> RawJson.raw(users.length.toString)),
+    layoutFn = layout,
+  )
 
   @cask.get("/users")
-  def userList(req: cask.Request) =
-    InertiaCask.render(
-      req,
-      component = "Users/Index",
-      props = Props.of(
-        "users" -> prop(users),
-      ),
-      layoutFn = layout,
-    )
+  def userList(req: cask.Request) = InertiaCask.render(
+    req,
+    component = "Users/Index",
+    props = Props.of("users" -> prop(users)),
+    layoutFn = layout,
+  )
 
   @cask.get("/users/:id")
   def userShow(req: cask.Request, id: Int) =
     users.find(_.id == id) match
       case Some(user) => renderUserShow(req, user)
-      case None       => cask.Response("Not Found", statusCode = 404)
+      case None       => cask.Response(
+        "Not Found",
+        statusCode = 404,
+      )
 
   // Shared helper that renders Users/Show.
   // Callers just pass errors through; which error bag they end up nested under
   // is decided automatically by the core based on the X-Inertia-Error-Bag header the client sends.
   private def renderUserShow(
-    req: cask.Request,
-    user: User,
-    errors: Map[String, String] = Map.empty,
-  ): cask.Response[String] =
-    InertiaCask.render(
-      req,
-      component = "Users/Show",
-      props = Props.of(
-        "user"  -> prop(user),
-        "posts" -> prop(posts.filter(_.authorId == user.id)),
-      ),
-      errors = errors,
-      layoutFn = layout,
-    )
+      req: cask.Request,
+      user: User,
+      errors: Map[String, String] = Map.empty,
+  ): cask.Response[String] = InertiaCask.render(
+    req,
+    component = "Users/Show",
+    props = Props.of("user" -> prop(user), "posts" -> prop(posts.filter(_.authorId == user.id))),
+    errors = errors,
+    layoutFn = layout,
+  )
 
   // Profile update form. The client sends this with errorBag "updateProfile".
   @cask.post("/users/:id/profile")
   def updateProfile(req: cask.Request, id: Int) =
     users.find(_.id == id) match
-      case None       => cask.Response("Not Found", statusCode = 404)
+      case None => cask.Response(
+        "Not Found",
+        statusCode = 404,
+      )
       case Some(user) =>
-        val body   = readFromString[UpdateProfileRequest](req.text())
+        val body = readFromString[UpdateProfileRequest](req.text())
         val errors = Map.newBuilder[String, String]
-        if body.name.trim.isEmpty then errors += "name"     -> "名前を入力してください"
+        if body.name.trim.isEmpty then errors += "name" -> "名前を入力してください"
         if !body.email.contains("@") then errors += "email" -> "メールアドレスの形式が正しくありません"
         val errs = errors.result()
         if errs.nonEmpty then renderUserShow(req, user, errs)
         else
-          users = users.map(u => if u.id == id then u.copy(name = body.name.trim, email = body.email) else u)
+          users = users.map(u =>
+            if u.id == id then u.copy(
+              name = body.name.trim,
+              email = body.email,
+            ) else u
+          )
           InertiaCask.redirect(req, s"/users/$id", 303)
 
   // Password change form. The client sends this with errorBag "updatePassword".
@@ -155,9 +168,12 @@ object ExampleServer extends cask.MainRoutes:
   @cask.post("/users/:id/password")
   def updatePassword(req: cask.Request, id: Int) =
     users.find(_.id == id) match
-      case None       => cask.Response("Not Found", statusCode = 404)
+      case None => cask.Response(
+        "Not Found",
+        statusCode = 404,
+      )
       case Some(user) =>
-        val body   = readFromString[UpdatePasswordRequest](req.text())
+        val body = readFromString[UpdatePasswordRequest](req.text())
         val errors = Map.newBuilder[String, String]
         if body.password.length < 8 then errors += "password" -> "パスワードは8文字以上にしてください"
         else if body.password != body.passwordConfirmation then errors += "passwordConfirmation" -> "パスワードが一致しません"
@@ -166,28 +182,22 @@ object ExampleServer extends cask.MainRoutes:
         else InertiaCask.redirect(req, s"/users/$id", 303)
 
   @cask.get("/about")
-  def about(req: cask.Request) =
-    InertiaCask.render(
-      req,
-      component = "About",
-      props = Props.of(
-        "version" -> str("0.1.0-SNAPSHOT"),
-      ),
-      layoutFn = layout,
-    )
+  def about(req: cask.Request) = InertiaCask.render(
+    req,
+    component = "About",
+    props = Props.of("version" -> str("0.1.0-SNAPSHOT")),
+    layoutFn = layout,
+  )
 
   // ── TODO routes ─────────────────────────────────────────────────────────────
 
   @cask.get("/todos")
-  def todoIndex(req: cask.Request) =
-    InertiaCask.render(
-      req,
-      component = "Todos/Index",
-      props = Props.of(
-        "todos" -> prop(todos),
-      ),
-      layoutFn = layout,
-    )
+  def todoIndex(req: cask.Request) = InertiaCask.render(
+    req,
+    component = "Todos/Index",
+    props = Props.of("todos" -> prop(todos)),
+    layoutFn = layout,
+  )
 
   // @cask.postJson re-serializes the return value's body as JSON, so here—where
   // we need to return an Inertia response that already has a JSON body—we use
@@ -208,7 +218,11 @@ object ExampleServer extends cask.MainRoutes:
         layoutFn = layout,
       )
     else
-      val todo = Todo(todoNextId, title.trim, done = false)
+      val todo = Todo(
+        todoNextId,
+        title.trim,
+        done = false,
+      )
       todoNextId += 1
       todos = todos :+ todo
       // A normal 303 redirect.
@@ -217,11 +231,14 @@ object ExampleServer extends cask.MainRoutes:
       //       @inertiajs/core 2.3.18 doesn't handle x-inertia-redirect, the
       //       example uses a normal redirect instead.
       InertiaCask.redirect(req, "/todos", 303)
+  end todoCreate
 
   @cask.postJson("/todos/:id/toggle")
   def todoToggle(req: cask.Request, id: Int) =
     todos = todos.map: t =>
-      if t.id == id then t.copy(done = !t.done) else t
+      if t.id == id then t.copy(
+        done = !t.done
+      ) else t
     InertiaCask.redirect(req, "/todos", 303)
 
   @cask.postJson("/todos/:id/delete")
@@ -230,3 +247,4 @@ object ExampleServer extends cask.MainRoutes:
     InertiaCask.redirect(req, "/todos", 303)
 
   initialize()
+end ExampleServer

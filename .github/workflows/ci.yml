@@ -25,7 +25,7 @@ jobs:
       # sbt 2 joins CLI args into a single command line, so multiple
       # commands must be separated with semicolons.
       - name: Check formatting
-        run: sbt 'scalafmtCheckAll; scalafmtSbtCheck'
+        run: sbt scruffFmtCheck
 
       - name: Check scalafix rules
         run: sbt 'scalafixAll --check'
