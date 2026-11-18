@@ -39,7 +39,7 @@ jobs:
       matrix:
         include:
           # The JVM axis also verifies that the JVM-only module (cask) and the
-          # examples compile. cask has no tests, but testOnly * still compiles it.
+          # examples compile.
           # sbt 2 joins CLI args into a single command line, so the tasks are
           # separated with semicolons instead of being passed as separate args.
           - platform: jvm
