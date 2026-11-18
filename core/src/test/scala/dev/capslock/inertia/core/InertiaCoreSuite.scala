@@ -2,67 +2,72 @@ package dev.capslock.inertia.core
 
 import dev.capslock.inertia.core.JsoniterProps.*
 
+
 class InertiaCoreSuite extends munit.FunSuite:
 
   // InertiaRequest implementation for tests
   case class FakeRequest(
-    isInertia: Boolean = false,
-    clientVersion: Option[String] = None,
-    url: String = "/test",
-    method: String = "GET",
-    partialComponent: Option[String] = None,
-    partialOnly: Set[String] = Set.empty,
-    partialExcept: Set[String] = Set.empty,
-    errorBag: Option[String] = None,
+      isInertia: Boolean = false,
+      clientVersion: Option[String] = None,
+      url: String = "/test",
+      method: String = "GET",
+      partialComponent: Option[String] = None,
+      partialOnly: Set[String] = Set.empty,
+      partialExcept: Set[String] = Set.empty,
+      errorBag: Option[String] = None,
   ) extends InertiaRequest
 
-  private def json(result: InertiaResult[Props]): String = result match
-    case r: InertiaResult.InertiaJson[Props @unchecked] => InertiaCore.pageToJson(r.page)
-    case r: InertiaResult.InertiaHtml[Props @unchecked] => InertiaCore.pageToJson(r.page)
-    case other                                          => fail(s"expected a page result, got $other")
+  private def json(result: InertiaResult[Props]): String =
+    result match
+      case r: InertiaResult.InertiaJson[Props @unchecked] => InertiaCore.pageToJson(r.page)
+      case r: InertiaResult.InertiaHtml[Props @unchecked] => InertiaCore.pageToJson(r.page)
+      case other                                          => fail(s"expected a page result, got $other")
 
   // ── errors property ────────────────────────────────────────────────────
 
-  test("errors は常に props に含まれ、空のときは {} になる") {
+  test("errors は常に props に含まれ、空のときは {} になる"):
     val result = InertiaCore.render(
-      FakeRequest(isInertia = true),
+      FakeRequest(
+        isInertia = true
+      ),
       "Home",
       Props.of("greeting" -> str("hi")),
     )
     assert(json(result).contains("\"errors\":{}"), json(result))
-  }
 
-  test("errors にメッセージがある場合は props に反映される") {
+  test("errors にメッセージがある場合は props に反映される"):
     val result = InertiaCore.render(
-      FakeRequest(isInertia = true),
+      FakeRequest(
+        isInertia = true
+      ),
       "Home",
       Props.empty,
       errors = Map("email" -> "必須です"),
     )
     assert(json(result).contains("\"errors\":{\"email\":\"必須です\"}"), json(result))
-  }
 
-  test("errorBag が指定されるとエラーがバッグ配下にネストされる") {
-    val req    = FakeRequest(isInertia = true, errorBag = Some("createUser"))
+  test("errorBag が指定されるとエラーがバッグ配下にネストされる"):
+    val req = FakeRequest(
+      isInertia = true,
+      errorBag = Some("createUser"),
+    )
     val result = InertiaCore.render(
       req,
       "Home",
       Props.empty,
       errors = Map("email" -> "invalid"),
     )
-    assert(
-      json(result).contains("\"errors\":{\"createUser\":{\"email\":\"invalid\"}}"),
-      json(result),
-    )
-  }
+    assert(json(result).contains("\"errors\":{\"createUser\":{\"email\":\"invalid\"}}"), json(result))
 
-  test("errorBag があってもエラーが空なら errors は {}") {
-    val req    = FakeRequest(isInertia = true, errorBag = Some("createUser"))
+  test("errorBag があってもエラーが空なら errors は {}"):
+    val req = FakeRequest(
+      isInertia = true,
+      errorBag = Some("createUser"),
+    )
     val result = InertiaCore.render(req, "Home", Props.empty)
     assert(json(result).contains("\"errors\":{}"), json(result))
-  }
 
-  test("partial reload でも errors は除外されず常に含まれる") {
+  test("partial reload でも errors は除外されず常に含まれる"):
     val req = FakeRequest(
       isInertia = true,
       partialComponent = Some("Home"),
@@ -76,78 +81,107 @@ class InertiaCoreSuite extends munit.FunSuite:
     )
     val out = json(result)
     assert(out.contains("\"greeting\":\"hi\""), out)
-    assert(!out.contains("\"other\""), out)                   // excluded by only
+    assert(!out.contains("\"other\""), out) // excluded by only
     assert(out.contains("\"errors\":{\"name\":\"ng\"}"), out) // errors remains
-  }
 
   // ── Version conflict (GET only) ────────────────────────────────────────
 
-  test("GET でバージョン不一致なら 409 Conflict") {
-    val req    = FakeRequest(isInertia = true, method = "GET", clientVersion = Some("old"))
-    val result = InertiaCore.render(req, "Home", Props.empty, version = "new")
+  test("GET でバージョン不一致なら 409 Conflict"):
+    val req = FakeRequest(
+      isInertia = true,
+      method = "GET",
+      clientVersion = Some("old"),
+    )
+    val result = InertiaCore.render(
+      req,
+      "Home",
+      Props.empty,
+      version = "new",
+    )
     assertEquals(result, InertiaResult.Conflict("/test", "new"))
-  }
 
-  test("非 GET ではバージョン不一致でも Conflict にならない") {
-    val req    = FakeRequest(isInertia = true, method = "POST", clientVersion = Some("old"))
-    val result = InertiaCore.render(req, "Home", Props.empty, version = "new")
+  test("非 GET ではバージョン不一致でも Conflict にならない"):
+    val req = FakeRequest(
+      isInertia = true,
+      method = "POST",
+      clientVersion = Some("old"),
+    )
+    val result = InertiaCore.render(
+      req,
+      "Home",
+      Props.empty,
+      version = "new",
+    )
     result match
       case _: InertiaResult.InertiaJson[?] => ()
       case other                           => fail(s"expected InertiaJson but got $other")
-  }
 
   // ── Redirect plan ──────────────────────────────────────────────────────
 
-  test("planRedirect: 通常の遷移先は Location リダイレクト") {
+  test("planRedirect: 通常の遷移先は Location リダイレクト"):
     assertEquals(
-      InertiaCore.planRedirect("GET", "/home", 302, isInertia = true),
+      InertiaCore.planRedirect(
+        "GET",
+        "/home",
+        302,
+        isInertia = true,
+      ),
       RedirectPlan.Location("/home", 302),
     )
-  }
 
-  test("planRedirect: POST の 302 は 303 に正規化される") {
+  test("planRedirect: POST の 302 は 303 に正規化される"):
     assertEquals(
-      InertiaCore.planRedirect("POST", "/home", 302, isInertia = true),
+      InertiaCore.planRedirect(
+        "POST",
+        "/home",
+        302,
+        isInertia = true,
+      ),
       RedirectPlan.Location("/home", 303),
     )
-  }
 
-  test("planRedirect: Inertia リクエストでフラグメント付きなら Fragment") {
+  test("planRedirect: Inertia リクエストでフラグメント付きなら Fragment"):
     assertEquals(
-      InertiaCore.planRedirect("GET", "/home#section", 302, isInertia = true),
+      InertiaCore.planRedirect(
+        "GET",
+        "/home#section",
+        302,
+        isInertia = true,
+      ),
       RedirectPlan.Fragment("/home#section"),
     )
-  }
 
-  test("planRedirect: 非 Inertia ではフラグメント付きでも Location") {
+  test("planRedirect: 非 Inertia ではフラグメント付きでも Location"):
     assertEquals(
-      InertiaCore.planRedirect("GET", "/home#section", 302, isInertia = false),
+      InertiaCore.planRedirect(
+        "GET",
+        "/home#section",
+        302,
+        isInertia = false,
+      ),
       RedirectPlan.Location("/home#section", 302),
     )
-  }
 
   // ── Initial HTML (Inertia v3) ──────────────────────────────────────────
 
-  test("pageToHtml は JSON script 要素とマウント用 div を出力する") {
+  test("pageToHtml は JSON script 要素とマウント用 div を出力する"):
     val page = InertiaPage("Home", Props.of("greeting" -> str("hi")), "/test", "v1")
     val html = InertiaCore.pageToHtml(page)
     assert(html.contains("""<script data-page="app" type="application/json">"""), html)
     assert(html.contains("""<div id="app"></div>"""), html)
     // The client parses the script body with JSON.parse, so the JSON must not be HTML-entity encoded
     assert(!html.contains("&quot;"), html)
-  }
 
-  test("pageToHtml はスラッシュを \\/ にエスケープする（URL・props とも）") {
+  test("pageToHtml はスラッシュを \\/ にエスケープする（URL・props とも）"):
     val page = InertiaPage("Home", Props.of("html" -> str("</script><b>x</b>")), "/events/80", "v1")
     val html = InertiaCore.pageToHtml(page)
     assert(html.contains("""\/events\/80"""), html)
     // A </script> sequence inside prop data must not close the script element early
     assert(html.contains("""<\/script><b>x<\/b>"""), html)
-  }
 
-  test("escapeJsonForScript はエスケープ済みのスラッシュを二重にエスケープしない") {
+  test("escapeJsonForScript はエスケープ済みのスラッシュを二重にエスケープしない"):
     assertEquals(InertiaCore.escapeJsonForScript("""{"a":"x/y"}"""), """{"a":"x\/y"}""")
     assertEquals(InertiaCore.escapeJsonForScript("""{"a":"x\/y"}"""), """{"a":"x\/y"}""")
     // literal backslash (\\) followed by a slash: the slash itself still needs escaping
     assertEquals(InertiaCore.escapeJsonForScript("""{"a":"x\\/y"}"""), """{"a":"x\\\/y"}""")
-  }
+end InertiaCoreSuite

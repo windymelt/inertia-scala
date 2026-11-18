@@ -2,50 +2,49 @@ package dev.capslock.inertia.cask
 
 import dev.capslock.inertia.core.*
 
+
 class CaskInertiaRequest(req: cask.Request) extends InertiaRequest:
 
-  private def header(name: String): Option[String] =
-    req.headers.get(name).flatMap(_.headOption)
+  private def header(name: String): Option[String] = req.headers.get(name).flatMap(_.headOption)
 
   private def headerList(name: String): Set[String] =
-    header(name)
-      .map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
-      .getOrElse(Set.empty)
+    header(name).map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
 
-  val isInertia: Boolean               = req.headers.contains(InertiaCore.HdrInertia)
-  val clientVersion: Option[String]    = header(InertiaCore.HdrVersion)
+  val isInertia: Boolean = req.headers.contains(InertiaCore.HdrInertia)
+  val clientVersion: Option[String] = header(InertiaCore.HdrVersion)
   val partialComponent: Option[String] = header(InertiaCore.HdrPartialCmp)
-  val partialOnly: Set[String]         = headerList(InertiaCore.HdrPartialOnly)
-  val partialExcept: Set[String]       = headerList(InertiaCore.HdrPartialExcept)
-  val errorBag: Option[String]         = header(InertiaCore.HdrErrorBag)
-  val method: String                   = req.exchange.getRequestMethod.toString.toUpperCase
-  val url: String                      =
+  val partialOnly: Set[String] = headerList(InertiaCore.HdrPartialOnly)
+  val partialExcept: Set[String] = headerList(InertiaCore.HdrPartialExcept)
+  val errorBag: Option[String] = header(InertiaCore.HdrErrorBag)
+  val method: String = req.exchange.getRequestMethod.toString.toUpperCase
+
+  val url: String =
     val path = req.exchange.getRequestPath
-    val qs   = req.exchange.getQueryString
+    val qs = req.exchange.getQueryString
     if qs.isEmpty then path else s"$path?$qs"
+
 
 object InertiaCask:
 
   /** Render a component from a Cask route handler. P can be any type with a JsonObject[P] instance. Typically Props (=
-    * Map[String, RawJson]) is used.
-    */
+   *  Map[String, RawJson]) is used.
+   */
   def render[P](
-    req: cask.Request,
-    component: String,
-    props: P,
-    sharedProps: Option[P] = None,
-    version: String = "",
-    errors: Map[String, String] = Map.empty,
-    layoutFn: String => String = InertiaCore.defaultLayout,
+      req: cask.Request,
+      component: String,
+      props: P,
+      sharedProps: Option[P] = None,
+      version: String = "",
+      errors: Map[String, String] = Map.empty,
+      layoutFn: String => String = InertiaCore.defaultLayout,
   )(using J: JsonObject[P]): cask.Response[String] =
-    val ireq                     = CaskInertiaRequest(req)
-    val result: InertiaResult[P] =
-      InertiaCore.render(ireq, component, props, sharedProps, version, errors)
+    val ireq = CaskInertiaRequest(req)
+    val result: InertiaResult[P] = InertiaCore.render(ireq, component, props, sharedProps, version, errors)
     resultToResponse(result, layoutFn)
 
   private def resultToResponse[P: JsonObject](
-    result: InertiaResult[P],
-    layoutFn: String => String,
+      result: InertiaResult[P],
+      layoutFn: String => String,
   ): cask.Response[String] = result match
     case r: InertiaResult.InertiaJson[P @unchecked] =>
       cask.Response(
@@ -53,8 +52,8 @@ object InertiaCask:
         statusCode = 200,
         headers = Seq(
           "Content-Type" -> "application/json; charset=utf-8",
-          "X-Inertia"    -> "true",
-          "Vary"         -> "X-Inertia",
+          "X-Inertia" -> "true",
+          "Vary" -> "X-Inertia",
         ),
       )
 
@@ -69,10 +68,7 @@ object InertiaCask:
       cask.Response(
         data = "",
         statusCode = 409,
-        headers = Seq(
-          InertiaCore.HdrLocation        -> location,
-          InertiaCore.HdrVersionResponse -> version,
-        ),
+        headers = Seq(InertiaCore.HdrLocation -> location, InertiaCore.HdrVersionResponse -> version),
       )
 
     case InertiaResult.Redirect(location, status) =>
@@ -82,14 +78,19 @@ object InertiaCask:
         headers = Seq("Location" -> location),
       )
 
-  def redirect(
-    req: cask.Request,
-    location: String,
-    status: Int = 302,
-  ): cask.Response[String] =
+  def redirect(req: cask.Request, location: String, status: Int = 302): cask.Response[String] =
     val ireq = CaskInertiaRequest(req)
     InertiaCore.planRedirect(ireq.method, location, status, ireq.isInertia) match
       case RedirectPlan.Fragment(loc) =>
-        cask.Response("", statusCode = 409, headers = Seq(InertiaCore.HdrRedirect -> loc))
+        cask.Response(
+          "",
+          statusCode = 409,
+          headers = Seq(InertiaCore.HdrRedirect -> loc),
+        )
       case RedirectPlan.Location(loc, st) =>
-        cask.Response("", statusCode = st, headers = Seq("Location" -> loc))
+        cask.Response(
+          "",
+          statusCode = st,
+          headers = Seq("Location" -> loc),
+        )
+end InertiaCask
