@@ -18,6 +18,7 @@ inThisBuild(
     description := "Server-side adapter implementing the Inertia.js protocol for Scala 3, decoupled from any specific JSON library or HTTP framework.",
     semanticdbEnabled := true,
     scalacOptions += "-Wunused:imports",
+    scruffFmtOnCompile := true,
   )
 )
 
